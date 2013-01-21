@@ -1,0 +1,1216 @@
+\documentclass[a4paper,20pt,notitlepage,openbib]{article}
+%\documentclass[a4paper,10pt,notitlepage,twocolumn]{article}
+%\usepackage{endfloat}
+%\usepackage{supertabular}
+\usepackage{graphicx}
+\usepackage{graphics}
+\usepackage{epsfig}
+%\usepackage{vmargin}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{epsfig}
+%\usepackage{subfigure}
+\usepackage[american]{babel}
+\begin{document}
+%\setmarginsrb{1}{2}{3}{4}{5}{6}{7}{8}
+\setpapersize{A4}
+\title{Improved Recognition of Native-like Protein Structures Using a Modular Meta Scoring Function (mmSF)}
+
+%mmSF: a Modular Meta Scoring Function Based on a Set of Normalized Orthogonal Univariate Discriminative Scoring Functions\\
+%Design of Modular Meta Scoring Functions: Flexibility versus Universality
+%\title{How to Teach a Computer to Discriminate Native-like from Wrong Folded Protein Conformations}
+
+\author{Antoine Logean, Alessandro Curioni }
+
+\date{17. August 2005}
+
+\maketitle
+
+\begin{abstract}
+
+A key component in protein structure prediction is a scoring function (SF) that can distinguish near-native conformations
+from misfolded ones. Depending on the approach used, three main types of SFs have been developed: physics-based,
+statistics-based, and empirical SFs. In this study we show that the performance of each approach in discriminating
+native-like from wrongly folded protein conformations presents strong variations when applied to (1) different protein
+fold families, (2) different protein structure prediction methods, and (3) different methods used to measure the SF
+performance. To take advantage of the strength of each approach, many previous works have developed hybrid SFs in which physics-based,
+statistics-based and empirical terms were combined. However if hybrid SFs exhibit very good discriminative performance,
+their design, the selection of the right terms and their parametrization are difficult, case-specific and based on trial-error approaches.
+This renders hybrid SFs difficult to transfer. In this work we develop a modular meta SF (mmSF) in which the  heterogeneous empirical terms found
+in classic hybrid SFs are replaced by normalized SFs rooted on different grounds: using (1) the $Gromos$ force field as physics-based SF, (2) 
+a residue-specific all-atom conditional probability discriminatory functionand, $Rapdf$ as statistics-based SF and (3) $Hydro$ as empirical
+SF as well as four different decoy sets (Rosetta, Lmds, Fisa and 4state\_reduced), we show how a linear combination of the normalized
+individual SFs, when optimized for a specific protein using the native rank as objective function, the enrichment factor or the native
+Z-score, performs better than any individual SFs. In addition to this complementary effect leading to a global improvement of $mmSF$, we also
+demonstrate the necessity of adding further levels of parameterization in the design of hybrid or meta SFs corresponding to (1)
+the protein fold specificities, (2) the method used to generate the model, and (3) the objective function used in the parameterization.
+Instead of developing one unique SF that has to perform well for all protein folds, independently of the model generation method and SF
+performance measurement method, we propose a more pragmatic approach that defines a modular meta SF that uses a different set of parameters 
+for each specific case (protein folds, structure generation methods, native-like measurement methods) .
+\end{abstract}
+%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%
+\section{INTRODUCTION}
+%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%
+The observation that the amino-acid sequence of a protein completely determines the folding process that leads to a unique
+three-dimensional structure, the native conformation, was the starting point of the so called ''folding problem''.
+Although 30 years after the Anfinsen publication \cite{anf:fol} much progress has been made in the understanding of the folding process,
+the ''ab-initio'' prediction of the three-dimensional (3D) structure of a protein remains a major unsolved problem of contemporary theoretical biology.
+The "folding problem" can be divided into two sub-problems: (1) the search for and generation of large number of candidate conformations (decoys) 
+by homology modeling, threading, or combinatorial fragment assembling, and (2) the evaluation or scoring of each candidate structure in terms of its ''nearness'' to the native conformation. A scoring function (SF) that can discriminate native-like from non-native protein conformations is thus a prerequisite 
+for all theoretical approaches to protein folding. Depending on the nature of the information and the approach used, SFs can be classified into two main groups: physics-based SFs (P-SF) and  knowledge-based SFs (K-SF).
+P-SFs use an inductive approach. A model of the potential energy of the protein is constructed aimed at mimicing the true physics of the
+system. They assume that the potential energy function of the protein can be split down into terms of bond stretching , angle bending,
+torsional, and nonbonded interactions. This molecular-mechanics force field (FF)
+\cite{vanGunsteren:gromos01,ponder:paper01,brooks:charm,jorgensen:OPLS,levitt:ENCAD} is then parameterized using high-level
+\textit{ab-initio} quantum-mechanical calculations as well as small molecule thermodynamic and spectroscopy data. The main advantage of
+P-SFs is the clear physical meaning of each individual term, which is helpful for gaining insight into the physical principles
+governing protein architecture. Moreover as they are constructed from first principles, they can be applied in atypical situations
+ such as non-equilibrium states (transition state), non-aqueous environment (proteins in membrane), or artificial sequences
+(\textit{de novo} protein design). Nevertheless compared with K-SFs, P-SFs are computationally expensive and also extremely sensitive to 
+small perturbations: a small mistake in the input structure (such as missing atoms or clashes) can lead to aberrant energy values. 
+An other problem associated with P-SFs is the low transferability of their parameters. Moreover, as FFs are a summation of two-body interactions 
+with a strong cooperative character, the energy surface is rugged and contains many local minima, making the search in the conformation
+phase space difficult. An other drawback is that a FF is a model for potential energy that does not contain entropic terms.
+As consequence, many attempts were made to build an effective P-SF that takes into account solvation effects. This was done
+by adding solvation terms to FF potentials using either a generalized Born solvent model \cite{Felts:OPLSsgb, Lee:CHARMMmdgb},
+ a solvent-accessible surface \cite{Zhu:gromos96gbsa}, or a Poisson-Boltzmann implicit solvent model \cite{Luo:Amberpb}.
+In contrast to P-SFs, whose parameters are determined by using physical measurements on simple systems, K-SFs use a deductive
+approach and extract information from experimental protein measures to infer a "pseudo" potential. K-SFs can be subdivided into
+two groups: statistics-based SFs (S-SF) and empirical SFs (E-SF).
+S-SFs use known 3D protein structures to convert properties of native proteins into a potential of mean forces
+(PMF) using either statistical mechanics  or Baysian statistics. Pairwise contact frequencies between the 20 amino acids
+\cite{jernigan:pmf01, jernigan:pmf02, sippl:pmf01, moult:pmf01} or residue-environment frequencies \cite{simons:paper01,bowie:profile}
+are first compiled from know 3D protein structures and then converted into energy using either the inverse Boltzmann
+law \cite{sippl:pmf01, jernigan:pmf01, jernigan:pmf02} or the Bayes theorem  \cite{moult:pmf01}. S-SFs have many advantages :
+they include all thermodynamically important contributions and thus implicitly account for entropy driven contributions (such as solvent
+effect leading to the hydrophobic collapse and secondary structure formations). They are also less sensitive to error or atom displacement.
+They can use a reduced (C$\alpha$ only) as well as a full atomic protein representation. Nevertheless the "blackbox" aspect of the
+derived potential does not allow the physics involved in the protein folding to be understood. Moreover S-SFs are strongly
+dependent on the training set used to infer the PMF that carries a memory of the size, composition, and quality of the database used.
+An other problem is that a majority of S-SFs relay on a two-body-based potential, whose accuracy to describe the highly cooperative
+non-bonding interactions in a protein has been questioned.
+
+In contrast to S-SFs which use only structural information, E-SFs can use any kind of empirical information (X-ray/nuclear magnetic resonance (NMR) structures, thermodynamic measures, bioinformatics data). By using supervised learning-based techniques, E-SFs are parameterized to fit experimental data optimally. 
+%<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+% limit of the correction
+%>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+The design of an E-SF starts with the selection of a set of empirical protein features (hydrophobicity distribution \cite{silverman:hydro02, silverman:hydro01, Fang:paper01}, surface areas \cite{berglund:paper01, Fang:paper01}, solvation energy \cite{Liang:paper01}, packing density \cite{berglund:paper01,jernigan:Miyazawa}, radius of gyration \cite{simons:paper01}, hydrogen bond \cite{Fujitsuka:Wolynes}, contact order \cite{berglund:paper01}, secondary structure packing \cite{simons:paper01}, and sequence-dependent local geometry \cite{Zhang:CLGP}) that serve as descriptors and form the independent variables of the new SF. If physics-based, statistics-based and empirical scoring terms are mixed, the SF is often called hybrid SF (H-SF). For a given functional, form the contribution of each feature has to be determined through a parameterization round: using an empirical training set (experimental protein structures, protein decoy sets, or any other empirical data) and an objective function that measures how well the H-SF fits the experimental data, an optimization method is employed to find the set of parameters for which the objective function reaches a stationary point. At that point, the values predicted by the H-SF fit optimally the empirical data. The main advantage of H-SFs is their ability to combine in the same SF, terms that are rooted in different approaches. But this flexibility has a price: the parameterization is done mainly empirically, based on a trial-error approach, and the feature, objective function and training set selection is largely dependent on the problem domain, leading to SFs that are badly transferable. Moreover in the implementation of the majority of existing H-SF, it is difficult if not impossible to add new terms, use other functional forms, or try other objective functions, optimization methods or training sets.
+
+The aim of this work is to design a SF that has the advantages of an H-SF by enabling the combination of terms rooted in different approaches but that can be easily re-parameterized for different problem domains.  This is done by using a new modular meta SF (mmSF) defined as a linear combination of three normalized discriminant SFs, each rooted in a different ground. Using different decoy sets, we show that when $mmSF$ is optimized for a given protein using a different objective functions (the native rank, the fraction enrichment, or the native Z-score) it is always possible to find a set of parameters for which $mmSF$ performs better than of the individual SF composing it. We also demonstrate that in the design of hybrid or meta SFs, it is important to add three additional levels of parameterization in order to take into accout (1) the protein fold family, (2) the method used to generate the 3D model and (3) the objective function used in the parameterization.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{MATERIALS AND METHODS}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%=========================
+\subsection{Decoy Sets}
+%=========================
+Publicly available decoy sets provide a mean to evaluate the performance of SFs  \cite{tsai:decoys, Samudrala:decoyR}. Many of these decoy sets contain 
+a large number of decoy conformations, with varying degrees of similarity to the native conformation. In this study four publicly available decoy sets 
+were used: \emph{Lmds} \cite{kesar:decoy},  \emph{Fisa} \cite{simons:decoy} and  \emph{4state\_reduced} \cite{parklevit:decoy} obtained from the 
+Decoys'R' Us database \cite{url:decoyR} and  \emph{Rosetta} (Rosetta\_10-14-01)  taken from \cite{url:baker}.
+
+%
+\begin{figure}
+\centering
+\mbox{\subfigure[Rosetta]{\resizebox{450pt}{!}{\includegraphics{png/rosetta_rmsd.png}}}}
+\mbox{  \subfigure[Fisa]{\resizebox{!}{250pt}{\includegraphics{png/fisa_rmsd.png}}}\quad
+    \subfigure[Lmds]{\resizebox{!}{250pt}{\includegraphics{png/lmds_rmsd.png}}}\quad
+    \subfigure[4state]{\resizebox{!}{250pt}{\includegraphics{png/4state_reduced_rmsd.png}}}}
+\caption{\label{rmsd_dis}\small\textit{Distribution of the root mean square deviation (RMSD) of the decoys with respect to the native conformation for each protein of the four decoy sets used in this study: \emph{Rosetta} (a), \emph{Fisa} (b), \emph{Lmds} (c) and \emph{4state\_reduced} (d). The proteins are order from left to right by protein fold families using the SCOP \cite{scop} classification (code in brakes).}}
+\end{figure}
+%
+%//////////////////////////////////////////////////////////
+Depending on the methods and energy functions used to produce the 3D models, the quality and quantity of the decoys can vary dramatically: \emph{Rosetta} and \emph{Fisa} were generated by a fragment insertion simulated annealing procedure, \emph{Lmds} results of the energy minimization of conformations generated by randomizing the torsion angles of the loop regions of experimental structures, and \emph{4state\_reduced} is based on a lattice model. Figure \ref{rmsd_dis} shows the distribution of the root mean square deviations (RMSD) of the decoys with respect to the native conformation for each protein of the decoy sets used in this study. To detect a possible correlation between the SF performance and the 3D fold topology, the proteins of each set are ordered by fold family using the SCOP classification \cite{scop}.
+
+%==============================================
+\subsection{Calculation of the individual SFs }
+%===============================================
+In this study three SFs were used: $Hydro$ \cite{silverman:hydro02, silverman:hydro01}, an hydrophobic score defined as the surface area under the normalized second-order hyfrophobic moment profile using an ellipsoidal description of the protein shape; $Rapdf$ \cite{moult:pmf01} a residue-specific all-atom conditional probability discriminatory functionand; $Gromos$ \cite{vanGunsteren:gromos01}, a molecular-mechanic FF dedicated to biomolecular systems. We thus have one member of each SF approach: $Hydro$ as E-SF, $Rapdf$ as S-SF, and $Gromos$ as P-SF.
+
+Using an in-house Python implementation of $Hydro$, the RAMP packet suite \cite{url:ramp} for $Rapdf$ and the software package GROMOS \cite{url:gromos}, the three scores are calculated for all decoy conformations. Each score value is divided by the number of residues and normalized. From the $Gromos$ energy only the two non-bonding terms accounting for the Coulombic and van der Waals interactions were taken. As these two non-bonding terms were initially parameterized together \cite{vanGunsteren:gromos01}, we regroup them in a unique term that accounts for all non-bonded $Gromos$ interactions. As FFs are extremely sensitive to small mistakes in the input structure (such as missing atoms and clashes), prior to calculating the potential energy values, each decoy structure is first minimized by a three-step procedure: (1) a first row relaxation is done by 200-step steepest descent (initial step = 0.01 nm, maximum step = 0.05 nm,  stop when $\Delta E < 0.1 kJ/mol$, maximum step number: 100); (2) followed by a 100-step conjugate gradient without shake, and finally (3) 1000-step conjugate gradient with shake. The Wan der Waals and electrostatic terms are then added to give the potential energy of non-bonding interactions.
+
+Protein conformations that could not be treated by our automatic procedure were discarded: 1bba, 1dtk, 2ovo, 4pti and unk for \emph{Lmds}; 1sn3 and 4pti for \emph{4state\_reduced}, and 1xxx for \emph{Rosetta}. A total of 77594 decoy conformations spread over 49 proteins originating from the Rosetta, Lmds, 4state\_reduced and Fisa decoy sets were treated. The high-throughput minimization was performed on a cluster of four IBM HS20 dual-processor Xeon-based blades (2.8 GHz) running Linux/OpenMosix. For the 77'594 protein conformations, with approximately 5 s per decoy, 15 h/CPU were needed.
+%=======================================================
+\subsection{Methods used to measure the SF performances}
+%=======================================================
+To measure the SF performance of discriminating native-like from wrongly folded protein conformations, three methods are used: the normalized native rank (NR), the fraction enrichement (FE), and the native Z-score (NZ). The NR gives the rank of the native conformation in the scoring list ordered by value. The FE gives the fraction enrichment of the 10\% lowest root mean square deviation (RMSD) conformations in the top 10\% best-scoring conformations, and the NZ corresponds to the difference between the native score and the average score of the decoy conformations expressed in standard deviation units. Both FE and NZ depend on the shape of the decoy distribution, whereas NR only tries to identify the native conformation. In this study the NR, FE and NZ as well as SF discriminative performance measurement methods are used as objective functions in the optimization.
+%=============================
+\subsection{$mmSF$ Definition}
+%=============================
+$mmSF$ is defined as a linear combination of the normalized individual SF $Hydro$, $Rapdf$ and $Gromos$:
+%////////////////////////////////////////////////////////////////////////
+\begin{equation}
+\label{equation_1}
+mmSF = a * N(Hydro) + b * N(Rapdf) + c * N(Gromos)
+\end{equation}
+%////////////////////////////////////////////////////////////////////////
+where $N(f)$ is the normalized form of the SF $f$. Thus, $mmSF$ depends on three parameters, $a, b$ and $c$, that have to be determined through an optimization step.
+%=========================================
+\subsection{$mmSF$ Optimization procedure}
+%=========================================
+For a given protein originating from a given decoy set, an optimization method is used to find the set of parameters $(a,b,c)$ that maximizes a given objective function. As objective function we use the same function as used to measure the individual SF performance:  the fraction enrichment (FE), the native rank (NR) and the native Z-score (NZ).
+Given a decoy set $\mathcal{P}$ containing $n$ proteins $\mathbf{p_{i}}$, two kinds of optimizations were done:
+\begin{itemize}
+\item \textbf{A local optimization}: $mmSF$ is optimized on each protein $\mathbf{p_{i}}$.\\
+Given $\mathbf{p_{i}} \in \mathcal{P}$, $(a,b,c) \in [0,1]^{3}$ and $f$ an objective function $\in \{NR, FE, NZ\}$:
+\begin{equation*}
+\begin{aligned}[b]
+\text{maximize}  &\qquad f(mmSF(\mathbf{p_{i}})) \\
+\text{subect to} &\qquad 0.95 > a^{2}+b^{2}+c^{2} > 1 ;
+\end{aligned}
+\end{equation*}
+\textbf{Test and training set:} 70\% of the decoy conformations were taken as training set, whereas the other 30\% were used as test set.
+\item \textbf{A global optimization}: $mmSF$ is optimized on all $n$ proteins of the decoy set $\mathcal{P}$.
+Given $\mathcal{P}=\{\mathbf{p_{i}}\}_{i=1}^{n}$, $(a,b,c) \in [0,1]^{3}$  and $f$ an objective function $\in \{NR, FE, NZ\}$:
+\begin{equation*}
+\begin{aligned}[b]
+\text{maximize}  &\qquad \sum_{i=1}^{n}{f(mmSF(\mathbf{p_{i}}))} \\
+\text{subect to} &\qquad 0.95 > a^{2}+b^{2}+c^{2} > 1 .
+\end{aligned}
+\end{equation*}
+\textbf{Test and training set:} a leave-one-out resampling strategy was used. In a decoy set of $n$ proteins, the optimization was performed $n$ times, where for a given protein  $\mathbf{p_{i}}$, the $n-1$ remaining proteins were used as training set to obtain the obtimal (a,b,c) values, which are used to calculate the native rank, fraction enrichment as well as the native Z-score of the remaining protein $\mathbf{p_{i}}$.
+\end{itemize}
+%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%
+\section{RESULTS}
+%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%
+
+%========================================================================
+\subsection{Individual performance of SFs rooted on different approaches}
+%========================================================================
+As a first step we show the individual performance variations of $Hydro$, $Rapdf$ and $Gromos$ in discriminating native-like from wrong folded protein conformations of the four public available decoy sets used in this work. The results are shown on figure \ref{trio_fe} (tables \ref{tab_value_enrich_1}, \ref{tab_value_enrich_2}), figure \ref{trio_nz} (tables \ref{tab_value_zscore_1}, \ref{tab_value_zscore_2}) and figure \ref{trio_nr} (tables \ref{tab_value_rank_1}, \ref{tab_value_zscore_2}) corresponding respectivelly to the fraction enrichment (FE), the native Z-score (NZ) and the native rank (NR).
+
+The independant performances of each SF show strong fluctuations of the FE, NZ and NR for the 4 decoy sets. This can be seen by the large standard deviation observed (tables \ref{tab_value_enrich_1}/\ref{tab_value_enrich_2} for the FE, tables \ref{tab_value_zscore_1}/\ref{tab_value_zscore_2} for the NZ and tables \ref{tab_value_rank_1}, \ref{tab_value_zscore_2} for the NR). The standart deviation of FE, NZ and NR of each SF is bigger as the difference between the average FE, NZ and NR values. This means that average values of the SF performance can not be used to compare two different SFs. An other way is to count for each SF the number of cases where it shows the best performance (show in bold in rows 2/3/4 in tables  \ref{tab_value_enrich_1}/\ref{tab_value_enrich_2}, \ref{tab_value_zscore_1}/\ref{tab_value_zscore_2} and \ref{tab_value_rank_1}/\ref{tab_value_zscore_2}). : for the FE we have for Rosetta 3 times over 40 for $Hydro$, 18 over 40 for $Gromos$ and 20 over 40 for $Rapdf$.
+
+\begin{table}[htbp]
+\begin{center}
+\begin{tabular}{| l | c | c c c | c c c | c c c |}
+\hline
+Decoy set & nb. of    & \multicolumn{3}{|c|}{FE} & \multicolumn{3}{|c|}{NZ} & \multicolumn{3}{|c|}{NR}\\
+name      & proteins  & \begin{tiny}Hydro\end{tiny} & \begin{tiny}Rapdf\end{tiny} & \begin{tiny}Gromos\end{tiny} & \begin{tiny}Hydro\end{tiny} & \begin{tiny}Rapdf\end{tiny} & \begin{tiny}Gromos\end{tiny} & \begin{tiny}Hydro\end{tiny} & \begin{tiny}Rapdf\end{tiny} & \begin{tiny}Gromos \end{tiny} \\
+\hline
+Rosetta &  40 & 3 & 20 & 18                             & 9 & 17 & 14                                & 9 & 20 & 16                             \\
+        &     & \begin{small}7.5\%\end{small} & \begin{small}50\%\end{small} & \begin{small}45\%\end{small} & \begin{small}22.5\%\end{small} & \begin{small}42.5\%\end{small} & \begin{small}35\%\end{small} & \begin{small}7.5\%\end{small} & \begin{small}50\%\end{small} & \begin{small}45\%\end{small} \\
+\hline
+Lmds    &  6   & 0 &2& 4                                   & 0 &1& 5                              & 0& 3& 5                             \\
+        &     & \begin{small}0\%\end{small} &\begin{small}33\%\end{small} &\begin{small}66\%\end{small} & \begin{small}0\%\end{small} &\begin{small}16.6\%\end{small} &\begin{small}83.3\%\end{small} & \begin{small}0\%\end{small} &\begin{small}50\%\end{small} &\begin{small}83.3\%\end{small} \\
+\hline
+Fisa    &  4   & 0 & 3 & 1                                   & 0 & 2 & 2                              & 0  &1 & 4                             \\
+        &     & \begin{small}0\%\end{small} & \begin{small}75\%\end{small} & \begin{small}25\%\end{small} & \begin{small}0\%\end{small} & \begin{small}50\% \end{small}& \begin{small}50\%\end{small} & \begin{small}0\%\end{small}  &\begin{small}25\%\end{small}  &\begin{small}100\%\end{small} \\
+\hline
+4state   &  5   & 0 & 5  &0                                   & 0 & 5 & 0                              & 0 & 5 & 2                             \\
+        &     & \begin{small}0\%\end{small} & \begin{small}100\% \end{small} &\begin{small}0\%\end{small} & \begin{small}0\%  \end{small}&\begin{small}100\% \end{small} &\begin{small}0\%\end{small} & \begin{small}0\%\end{small}  &\begin{small}100\%\end{small} & \begin{small}40\%\end{small} \\
+\hline
+mean & &  \begin{small}1.9\%\end{small} & \begin{small}64.5\%\end{small}  & \begin{small}34\%\end{small} & \begin{small}5.6\%\end{small} & \begin{small}52.3\%\end{small} & \begin{small}42.1\%\end{small} & \begin{small}1.9\%\end{small} & \begin{small}56.3\%\end{small} &  \begin{small}67.1\%\end{small} \\
+\hline
+\end{tabular}
+\end{center}
+\caption{\label{perf} \textit{Individual performance of $Hydro$, $Rapdf$ and $Gromos$.}}
+\end{table}
+
+
+
+\begin{figure}
+\centering
+\mbox{\subfigure[Rosetta]{\resizebox{450pt}{!}{\includegraphics{png/rosetta_enrich_scop_order.png}}}}
+\mbox{  \subfigure[Fisa]{\resizebox{!}{250pt}{\includegraphics{png/fisa_enrich_scop_order.png}}}\quad
+    \subfigure[Lmds]{\resizebox{!}{250pt}{\includegraphics{png/lmds_enrich_scop_order.png}}}\quad
+    \subfigure[4state]{\resizebox{!}{250pt}{\includegraphics{png/4state_reduced_enrich_scop_order.png}}}}
+\caption{\label{trio_fe}\small\textit{Individual fraction enrichment (FE) of $hydro$ (green), $rapdf$ (red), $gromos$ (blue) and mmSF (gray area) for the Rosetta (a), Fisa (b), Lmds (c) and 4state\_reduced (d) decoy sets. The proteins are order from left to right by protein fold families using the SCOP \cite{scop} classification. Each score value were divided by the number of residues of the calculated protein.}}
+\end{figure}
+%
+%///////////////////////////////////////////////////////////
+%///////////////////////////////////////////////////////////
+%///////////////////////////////////////////////////////////
+%
+\begin{figure}
+\centering
+\mbox{\subfigure[Rosetta]{\resizebox{450pt}{!}{\includegraphics{png/rosetta_zscore_scop_order.png}}}}
+\mbox{  \subfigure[Fisa]{\resizebox{!}{250pt}{\includegraphics{png/fisa_zscore_scop_order.png}}}\quad
+    \subfigure[Lmds]{\resizebox{!}{250pt}{\includegraphics{png/lmds_zscore_scop_order.png}}}\quad
+    \subfigure[4state]{\resizebox{!}{250pt}{\includegraphics{png/4state_reduced_zscore_scop_order.png}}}}
+\caption{\label{trio_nz}\small\textit{Individual native Z-score (NZ) of $hydro$ (green), $rapdf$ (red), $gromos$ (blue) and mmSF (gray area) for the Rosetta (a), Fisa (b), Lmds (c) and 4state\_reduced (d) decoy sets. The proteins are order from left to right by protein fold families using the SCOP \cite{scop} classification. Each score value were divided by the number of residues of the calculated protein.}}
+\end{figure}
+%
+%///////////////////////////////////////////////////////////
+%///////////////////////////////////////////////////////////
+%///////////////////////////////////////////////////////////
+%
+\begin{figure}
+\centering
+\mbox{\subfigure[Rosetta]{\resizebox{450pt}{!}{\includegraphics{png/rosetta_rank_scop_order.png}}}}
+\mbox{  \subfigure[Fisa]{\resizebox{!}{250pt}{\includegraphics{png/fisa_rank_scop_order.png}}}\quad
+    \subfigure[Lmds]{\resizebox{!}{250pt}{\includegraphics{png/lmds_rank_scop_order.png}}}\quad
+    \subfigure[4state]{\resizebox{!}{250pt}{\includegraphics{png/4state_reduced_rank_scop_order.png}}}}
+\caption{\label{trio_nr}\small\textit{Individual native rank (NR) of $hydro$ (green), $rapdf$ (red), $gromos$ (blue) and mmSF (gray area) for the Rosetta (a), Fisa (b), Lmds (c) and 4state\_reduced (d) decoy sets. The proteins are order from left to right by protein fold families using the SCOP \cite{scop} classification. Each score value were divided by the number of residues of the calculated protein.}}
+\end{figure}
+%
+%///////////////////////////////////////////////////////////
+%///////////////////////////////////////////////////////////
+%///////////////////////////////////////////////////////////
+%
+\begin{table}[htbp]
+\begin{center}
+\begin{tabular}{| l | c c c | c c | c c |}
+\hline
+\multicolumn{8}{|l|}{\Large \strut { Rosetta }} \\
+\hline
+Protein & \multicolumn{7}{|c|}{Fraction Enrichment}\\
+name    & hydro & rapdf & gromos & mmSF & [\%] & mmSF(s) & [\%] \\
+\hline
+1vcc & \textbf{1.66} & 1.34 & 1.13 & 2.04 & \textit{\begin{small}+22.5\end{small}} & 1.72 & \textit{\begin{small}+3.22\end{small}} \\
+2ezh & 0.42 & \textbf{2.66} & 0.85 & 2.66 & \textit{\begin{small}0.0\end{small}} & 1.49 & \textit{\begin{small}-44\end{small}} \\
+1am3 & 0.05 & \textbf{1.26} & 0.63 & 1.36 & \textit{\begin{small}+8.33\end{small}} & 0.94 & \textit{\begin{small}-25\end{small}} \\
+2fow & 0.98 & \textbf{1.14} & 1.08 & 1.47 & \textit{\begin{small}+28.5\end{small}} & 1.36 & \textit{\begin{small}+19\end{small}} \\
+1aa3 & 1.28 & \textbf{1.92} & 1.87 & 2.51 & \textit{\begin{small}+30.5\end{small}} & 2.25 & \textit{\begin{small}+16.6\end{small}} \\
+1pgx & 0.59 & 0.48 & \textbf{1.40} & 1.45 & \textit{\begin{small}+3.84\end{small}} & 0.64 & \textit{\begin{small}-53\end{small}} \\
+1a32 & 0.80 & 0.0 & \textbf{0.99} & 1.30 & \textit{\begin{small}+31.2\end{small}} & 0.31 & \textit{\begin{small}-68\end{small}} \\
+1csp & 2.26 & \textbf{3.48} & 0.66 & 3.70 & \textit{\begin{small}+6.34\end{small}} & 2.76 & \textit{\begin{small}-20\end{small}} \\
+2fxb & 1.15 & \textbf{1.73} & 0.57 & 1.81 & \textit{\begin{small}+4.76\end{small}} & 0.82 & \textit{\begin{small}-52\end{small}} \\
+1ptq & \textbf{1.80} & 1.73 & 1.48 & 2.29 & \textit{\begin{small}+27.5\end{small}} & 1.80 & \textit{\begin{small}0.0\end{small}} \\
+1pou & 0.63 & 1.05 & \textbf{1.73} & 1.79 & \textit{\begin{small}+3.03\end{small}} & 1.57 & \textit{\begin{small}-9\end{small}} \\
+5pti & 0.42 & 0.16 & \textbf{1.51} & 1.51 & \textit{\begin{small}0.0\end{small}} & 1.17 & \textit{\begin{small}-22\end{small}} \\
+1tuc & 1.26 & 1.16 & \textbf{1.74} & 1.95 & \textit{\begin{small}+12.1\end{small}} & 1.74 & \textit{\begin{small}0.0\end{small}} \\
+1cc5 & 1.27 & 1.49 & \textbf{1.99} & 2.04 & \textit{\begin{small}+2.77\end{small}} & 1.82 & \textit{\begin{small}-8.3\end{small}} \\
+1mzm & 1.66 & \textbf{2.55} & 1.55 & 2.55 & \textit{\begin{small}0.0\end{small}} & 2.33 & \textit{\begin{small}-8.6\end{small}} \\
+1nre & 0.0 & 0.89 & \textbf{2.53} & 2.53 & \textit{\begin{small}0.0\end{small}} & 2.21 & \textit{\begin{small}-12\end{small}} \\
+1vif & 0.15 & \textbf{5.21} & 5.06 & 6.22 & \textit{\begin{small}+19.1\end{small}} & 6.22 & \textit{\begin{small}+19.1\end{small}} \\
+1kjs & 1.60 & 2.35 & \textbf{2.47} & 3.27 & \textit{\begin{small}+32.5\end{small}} & 2.66 & \textit{\begin{small}+7.5\end{small}} \\
+2ptl & 0.0 & \textbf{1.74} & 1.36 & 2.17 & \textit{\begin{small}+25.0\end{small}} & 2.17 & \textit{\begin{small}+25.0\end{small}} \\
+1nkl & 1.69 & \textbf{2.15} & 1.10 & 2.48 & \textit{\begin{small}+15.1\end{small}} & 1.89 & \textit{\begin{small}-12\end{small}} \\
+1afi & 2.03 & 2.88 & \textbf{3.28} & 3.96 & \textit{\begin{small}+20.6\end{small}} & 3.79 & \textit{\begin{small}+15.5\end{small}} \\
+1r69 & 0.0 & 1.61 & \textbf{4.03} & 4.44 & \textit{\begin{small}+10.0\end{small}} & 4.03 & \textit{\begin{small}0.0\end{small}} \\
+1dol & 1.59 & \textbf{2.39} & 0.68 & 2.45 & \textit{\begin{small}+2.38\end{small}} & 1.76 & \textit{\begin{small}-26\end{small}} \\
+1ctf & 1.35 & 0.83 & \textbf{1.50} & 1.76 & \textit{\begin{small}+17.2\end{small}} & 1.40 & \textit{\begin{small}-6.8\end{small}} \\
+1gab & 0.21 & \textbf{0.94} & 0.84 & 1.10 & \textit{\begin{small}+16.6\end{small}} & 0.94 & \textit{\begin{small}0.0\end{small}} \\
+1uba & 1.36 & \textbf{1.73} & 0.78 & 1.94 & \textit{\begin{small}+12.1\end{small}} & 1.42 & \textit{\begin{small}-18\end{small}} \\
+1bq9 & 0.38 & 1.27 & \textbf{3.00} & 3.00 & \textit{\begin{small}0.0\end{small}} & 2.74 & \textit{\begin{small}-8.5\end{small}} \\
+1sro & 0.69 & 1.75 & \textbf{1.85} & 2.44 & \textit{\begin{small}+31.4\end{small}} & 2.28 & \textit{\begin{small}+22.8\end{small}} \\
+1bw6 & 0.21 & \textbf{1.57} & 0.68 & 1.57 & \textit{\begin{small}0.0\end{small}} & 1.15 & \textit{\begin{small}-26\end{small}} \\
+1res & 1.39 & 1.39 & \textbf{1.91} & 2.20 & \textit{\begin{small}+15.1\end{small}} & 1.97 & \textit{\begin{small}+3.03\end{small}} \\
+2pdd & 0.74 & 0.40 & \textbf{1.20} & 1.20 & \textit{\begin{small}0.0\end{small}} & 0.86 & \textit{\begin{small}-28\end{small}} \\
+5icb & 1.81 & \textbf{2.51} & 1.17 & 2.67 & \textit{\begin{small}+6.38\end{small}} & 1.65 & \textit{\begin{small}-34\end{small}} \\
+1hyp & 0.78 & 0.69 & \textbf{0.88} & 1.18 & \textit{\begin{small}+33.3\end{small}} & 0.69 & \textit{\begin{small}-22\end{small}} \\
+1utg & 0.59 &\textbf{ 0.96} & \textbf{0.96} & 1.10 & \textit{\begin{small}+15.3\end{small}} & 0.96 & \textit{\begin{small}0.0\end{small}} \\
+1cei & \textbf{1.63} & 1.21 & 1.21 & 2.05 & \textit{\begin{small}+25.8\end{small}} & 1.47 & \textit{\begin{small}-9.6\end{small}} \\
+1tif & 1.40 & \textbf{2.0} & 0.54 & 2.10 & \textit{\begin{small}+5.40\end{small}} & 1.29 & \textit{\begin{small}-35\end{small}} \\
+1lfb & 0.06 & 0.55 & \textbf{0.89} & 0.96 & \textit{\begin{small}+7.69\end{small}} & 0.96 & \textit{\begin{small}+7.69\end{small}} \\
+1msi & 2.48 & \textbf{3.32} & 2.11 & 3.85 & \textit{\begin{small}+15.8\end{small}} & 3.48 & \textit{\begin{small}+4.76\end{small}} \\
+1uxd & 0.73 & \textbf{3.00} & 1.63 & 3.63 & \textit{\begin{small}+21.0\end{small}} & 2.79 & \textit{\begin{small}-7.0\end{small}} \\
+1ail & 0.16 & \textbf{0.60} & 0.44 & 0.66 & \textit{\begin{small}+9.09\end{small}} & 0.38 & \textit{\begin{small}-36\end{small}} \\
+\hline
+Mean & \textbf{0.98} & \textbf{1.65} & \textbf{1.53} & \textbf{2.28} & & \textbf{1.85} &\\
+SD & \textit{0.69} & \textit{1.02} & \textit{0.97} & \textit{1.08} & & \textit{1.12} &\\
+\hline
+\end{tabular}
+\end{center}
+\caption{\label{tab_value_enrich_1} \textit{
+Fraction enrichment (FE) of $Hydro$, $Rapdf$ and $Gromos$ compared with $mmSF$ for the Rosetta decoy set. Colums 5 and 6 correspond to $mmSF$ optimized for each protein whereas columns 7 and 8 correspond to $mmSF$ optimized for the whole decoy set, written $mmSF(set)$. The improvement of $mmSF$ and $mmSF(set)$ over the best value of the three individual SFs ($Hydro$, $Rapdf$ and $Gromos$) is also given in \%.}}
+\end{table}
+%
+%///////////////////////////////////////////////////////////
+%///////////////////////////////////////////////////////////
+%///////////////////////////////////////////////////////////
+%
+\begin{table}[htbp]
+\begin{center}
+\begin{tabular}{| l | c c c | c c | c c |}
+\hline
+\multicolumn{8}{|l|}{\Large \strut { Lmds }} \\
+\hline
+Protein & \multicolumn{7}{|c|}{Fraction Enrichment}\\
+name    & hydro & rapdf & gromos & mmSF & [\%] & mmSF(s) & [\%] \\
+\hline
+1fc2 & 1.19 & 0.99 & \textbf{1.39} & 2.19 & \textit{\begin{small}+57.1\end{small}} & 1.99 & \textit{\begin{small}+42.8\end{small}} \\
+1b0n-B & 1.40 & 0.80 & \textbf{2.00} & 3.41 & \textit{\begin{small}+70.0\end{small}} & 2.81 & \textit{\begin{small}+40.0\end{small}} \\
+2cro & 0.39 & 0.39 & \textbf{1.59} & 1.79 & \textit{\begin{small}+12.5\end{small}} & 1.59 & \textit{\begin{small}0.0\end{small}} \\
+1shf-A & 0.68 & \textbf{1.36} & 0.68 & 1.36 & \textit{\begin{small}0.0\end{small}} & 0.68 & \textit{\begin{small}-50.\end{small}} \\
+1ctf & 1.20 & 1.20 & \textbf{2.20} & 3.20 & \textit{\begin{small}+45.4\end{small}} & 2.80 & \textit{\begin{small}+27.2\end{small}} \\
+1igd & 0.79 & \textbf{1.99} & 0.79 & 2.19 & \textit{\begin{small}+10.0\end{small}} & 1.39 & \textit{\begin{small}-30.\end{small}} \\
+\hline
+Mean & \textbf{0.94} & \textbf{1.12} & \textbf{1.44} & \textbf{2.36} & & \textbf{1.88} &  \\
+SD & \textit{0.38} & \textit{0.54 }& \textit{0.61} & \textit{0.79} & & \textit{0.83} & \\
+\hline
+\multicolumn{8}{|l|}{\Large \strut { Fisa }} \\
+\hline
+Protein & \multicolumn{7}{|c|}{Fraction Enrichment}\\
+name    & hydro & rapdf & gromos & mmSF & [\%] & mmSF(s) & [\%] \\
+\hline
+1hdd-C & 0.99 & \textbf{4.59} & 1.19 & 4.79 & \textit{\begin{small}+4.34\end{small}} & 4.39 & \textit{\begin{small}-4.3\end{small}} \\
+1fc2 & 0.19 & 0.19 & \textbf{1.59} & 2.39 & \textit{\begin{small}+50.0\end{small}} & 1.79 & \textit{\begin{small}+12.5\end{small}} \\
+2cro & 2.19 & \textbf{2.59} & 1.39 & 3.39 & \textit{\begin{small}+30.7\end{small}} & 3.19 & \textit{\begin{small}+23.0\end{small}} \\
+4icb & 1.19 & \textbf{1.99} & 1.59 & 2.59 & \textit{\begin{small}+30.0\end{small}} & 2.59 & \textit{\begin{small}+30.0\end{small}} \\
+\hline
+Mean & \textbf{1.14} & \textbf{2.34} & \textbf{1.44} & \textbf{3.29} & & \textbf{2.99} & \\
+SD & \textit{0.82} & \textit{1.81} & \textit{0.19} & \textit{1.08} & & \textit{1.09} & \\
+\hline
+\multicolumn{8}{|l|}{\Large \strut { 4state\_reduced }} \\
+\hline
+Protein & \multicolumn{7}{|c|}{Fraction Enrichment}\\
+name    & hydro & rapdf & gromos & mmSF & [\%] & mmSF(s) & [\%] \\
+\hline
+2cro & 0.0 & \textbf{4.44} & 2.96 & 5.03 & \textit{\begin{small}+13.3\end{small}} & 4.59 & \textit{\begin{small}+3.33\end{small}} \\
+1r69 & 0.44 & \textbf{3.99} & 1.47 & 4.43 & \textit{\begin{small}+11.1\end{small}} & 4.28 & \textit{\begin{small}+7.40\end{small}} \\
+4rxn & 0.65 & \textbf{2.60} & 2.28 & 3.90 & \textit{\begin{small}+50.0\end{small}} & 3.58 & \textit{\begin{small}+37.5\end{small}} \\
+1ctf & 4.75 & \textbf{5.22} & 1.26 & 6.33 & \textit{\begin{small}+21.2\end{small}} & 6.18 & \textit{\begin{small}+18.1\end{small}} \\
+3icb & 4.12 & \textbf{6.72} & 3.05 & 7.03 & \textit{\begin{small}+4.54\end{small}} & 7.03 & \textit{\begin{small}+4.54\end{small}} \\
+\hline
+Mean & \textbf{1.99} & \textbf{4.60} & \textbf{2.20} & \textbf{5.35} & & \textbf{5.13} & \\
+SD & \textit{2.25} & \textit{1.52} & \textit{0.82} & \textit{1.30} & & \textit{1.42} &\\
+\hline
+\end{tabular}
+\end{center}
+\caption{\label{tab_value_enrich_2} \textit{
+Fraction enrichment (FE) of $Hydro$, $Rapdf$ and $Gromos$ compared with $mmSF$ for the Lmds, Fisa and 4state\_reduced decoy sets. Colums 5 and 6 correspond to $mmSF$ optimized for each protein whereas columns 7 and 8 correspond to $mmSF$ optimized for the whole decoy set, written $mmSF(set)$. The improvement of $mmSF$ and $mmSF(set)$ over the best value of the three individual SFs ($Hydro$, $Rapdf$ and $Gromos$) is also given in \%.}}
+\end{table}
+%
+%///////////////////////////////////////////////////////////
+%///////////////////////////////////////////////////////////
+%///////////////////////////////////////////////////////////
+%
+\begin{table}[htbp]
+\begin{center}
+\begin{tabular}{| l | c c c | c c | c c |}
+\hline
+\multicolumn{8}{|l|}{\Large \strut { Rosetta }} \\
+\hline
+Protein & \multicolumn{7}{|c|}{Native Z-score (NZ)}\\
+name    & hydro & rapdf & gromos & mmSF & [\%] & mmSF(s) & [\%] \\
+\hline
+1vcc & -1.9 & -2.5 & \textbf{-2.7} & -3.7 & \textit{\begin{small}+34.7\end{small}} & -3.3 & \textit{\begin{small}+19.9\end{small}} \\
+2ezh & -1.6 & \textbf{-2.3} & 2.27 & -2.5 & \textit{\begin{small}+9.55\end{small}} & -0.9 & \textit{\begin{small}-58.\end{small}} \\
+1am3 & -0.3 & \textbf{-2.5} & -0.4 & -2.6 & \textit{\begin{small}+1.75\end{small}} & -2.4 & \textit{\begin{small}-5.5\end{small}} \\
+2fow & \textbf{-0.6} & -0.1 & 0.97 & -0.6 & \textit{\begin{small}-0.0\end{small}} & 0.35 & \textit{\begin{small}-153\end{small}} \\
+1aa3 & \textbf{-1.5} & 1.06 & 0.78 & -1.5 & \textit{\begin{small}-0.0\end{small}} & 1.26 & \textit{\begin{small}-183\end{small}} \\
+1pgx & -0.5 & \textbf{-2.1} & -1.7 & -2.7 & \textit{\begin{small}+30.8\end{small}} & -2.7 & \textit{\begin{small}+27.1\end{small}} \\
+1a32 & \textbf{-0.8} & -0.7 & 0.49 & -0.9 & \textit{\begin{small}+14.9\end{small}} & -0.3 & \textit{\begin{small}-52.\end{small}} \\
+1csp & -0.8 & \textbf{-2.4} & -1.7 & -2.9 & \textit{\begin{small}+17.9\end{small}} & -2.8 & \textit{\begin{small}+14.7\end{small}} \\
+2fxb & 0.39 & \textbf{-0.8} & -0.1 & -0.8 & \textit{\begin{small}+0.42\end{small}} & -0.6 & \textit{\begin{small}-22.\end{small}} \\
+1ptq & 1.79 & 2.62 & \textbf{-0.2} & -0.2 & \textit{\begin{small}-0.0\end{small}} & 2.03 & \textit{\begin{small}-912\end{small}} \\
+1pou & 2.02 & \textbf{-1.8} & -0.3 & -1.8 & \textit{\begin{small}+0.00\end{small}} & -1.6 & \textit{\begin{small}-8.8\end{small}} \\
+5pti & -0.6 & \textbf{-2.0} & -0.9 & -2.2 & \textit{\begin{small}+9.88\end{small}} & -2.1 & \textit{\begin{small}+3.64\end{small}} \\
+1tuc & -1.3 & -1.7 & \textbf{-1.9} & -2.7 & \textit{\begin{small}+43.9\end{small}} & -2.4 & \textit{\begin{small}+29.2\end{small}} \\
+1cc5 & 0.17 & 1.42 & \textbf{-2.2} & -2.2 & \textit{\begin{small}-0.0\end{small}} & 0.19 & \textit{\begin{small}-108\end{small}} \\
+1mzm & -1.2 & \textbf{-2.6} & -0.6 & -2.6 & \textit{\begin{small}+0.87\end{small}} & -2.5 & \textit{\begin{small}-3.8\end{small}} \\
+1nre & 1.06 & -0.8 & \textbf{-1.1} & -1.3 & \textit{\begin{small}+14.8\end{small}} & -1.2 & \textit{\begin{small}+5.27\end{small}} \\
+1vif & -0.7 & \textbf{-3.0} & -2.6 & -3.4 & \textit{\begin{small}+13.5\end{small}} & -3.4 & \textit{\begin{small}+11.9\end{small}} \\
+1kjs & 2.16 & 2.14 & \textbf{-0.7} & -0.7 & \textit{\begin{small}-0.0\end{small}} & 1.63 & \textit{\begin{small}-330\end{small}} \\
+2ptl & 0.78 & 0.95 & \textbf{-0.5} & -0.5 & \textit{\begin{small}-0.0\end{small}} & 0.66 & \textit{\begin{small}-221\end{small}} \\
+1nkl & -1.1 & -2.6 & \textbf{-3.4} & -4.2 & \textit{\begin{small}+22.2\end{small}} & -4.0 & \textit{\begin{small}+16.7\end{small}} \\
+1afi & -0.3 & 0.44 & \textbf{-2.6} & -2.6 & \textit{\begin{small}-0.0\end{small}} & -0.8 & \textit{\begin{small}-67.\end{small}} \\
+1r69 & 1.47 & \textbf{-2.1} & -1.7 & -2.5 & \textit{\begin{small}+19.6\end{small}} & -2.5 & \textit{\begin{small}+19.6\end{small}} \\
+1dol & -0.1 & \textbf{-2.7} & -0.8 & -2.8 & \textit{\begin{small}+3.19\end{small}} & -2.7 & \textit{\begin{small}+1.07\end{small}} \\
+1ctf & -1.3 & \textbf{-3.0} & -1.5 & -3.3 & \textit{\begin{small}+8.52\end{small}} & -3.1 & \textit{\begin{small}+4.95\end{small}} \\
+1gab & 0.82 & 2.43 & \textbf{0.05} & 0.05 & \textit{\begin{small}0.0\end{small}} & 2.11 & \textit{\begin{small}+3659\end{small}} \\
+1uba & \textbf{-0.4} & 0.73 & 1.97 & -0.4 & \textit{\begin{small}-0.0\end{small}} & 1.73 & \textit{\begin{small}-452\end{small}} \\
+1bq9 & 1.31 & -2.6 & \textbf{-2.9} & -3.6 & \textit{\begin{small}+22.2\end{small}} & -3.5 & \textit{\begin{small}+18.6\end{small}} \\
+1sro & -0.1 & \textbf{-0.4} & 0.24 & -0.4 & \textit{\begin{small}-0.0\end{small}} & -0.2 & \textit{\begin{small}-36.\end{small}} \\
+1bw6 & \textbf{-0.2} & 1.24 & 1.10 & -0.2 & \textit{\begin{small}-0.0\end{small}} & 1.56 & \textit{\begin{small}-686\end{small}} \\
+1res & \textbf{0.29} & 1.09 & 0.75 & 0.29 & \textit{\begin{small}0.0\end{small}} & 1.31 & \textit{\begin{small}+346.\end{small}} \\
+2pdd & \textbf{0.74} & 0.80 & 3.05 & 0.74 & \textit{\begin{small}0.0\end{small}} & 2.22 & \textit{\begin{small}+197.\end{small}} \\
+5icb & \textbf{-1.9} & -1.5 & -1.5 & -2.5 & \textit{\begin{small}+32.8\end{small}} & -1.9 & \textit{\begin{small}+2.62\end{small}} \\
+1hyp & 0.02 & \textbf{-2.9} & 0.37 & -2.9 & \textit{\begin{small}-0.0\end{small}} & -1.7 & \textit{\begin{small}-41.\end{small}} \\
+1utg & 1.36 & -0.3 & \textbf{-2.8} & -2.9 & \textit{\begin{small}+0.60\end{small}} & -2.4 & \textit{\begin{small}-14.\end{small}} \\
+1cei & -2.0 & -2.7 & \textbf{-3.2} & -4.2 & \textit{\begin{small}+32.0\end{small}} & -3.8 & \textit{\begin{small}+20.8\end{small}} \\
+1tif & 0.16 & \textbf{-2.3} & 0.82 & -2.3 & \textit{\begin{small}-0.0\end{small}} & -1.5 & \textit{\begin{small}-30.\end{small}} \\
+1lfb & 0.02 & \textbf{-1.9} & 0.88 & -1.9 & \textit{\begin{small}-0.0\end{small}} & -0.6 & \textit{\begin{small}-65.\end{small}} \\
+1msi & -0.4 & -1.1 & \textbf{-3.7} & -3.7 & \textit{\begin{small}+0.40\end{small}} & -2.3 & \textit{\begin{small}-38.\end{small}} \\
+1uxd & \textbf{0.31} & 1.01 & 0.65 & 0.31 & \textit{\begin{small}0.0\end{small}} & 1.16 & \textit{\begin{small}+264.\end{small}} \\
+1ail & 2.02 & \textbf{-2.5} & -1.6 & -2.8 & \textit{\begin{small}+14.2\end{small}} & -2.8 & \textit{\begin{small}+14.1\end{small}} \\
+\hline
+Mean & \textbf{-0.0} & \textbf{-0.9} & \textbf{-0.7} & \textbf{-1.9} & & \textbf{-1.1} & \\
+SD & \textit{1.15} & \textit{1.73} & \textit{1.65} & \textit{1.36} & & \textit{1.90} & \\
+\hline
+\end{tabular}
+\end{center}
+\caption{\label{tab_value_zscore_1} \textit{
+Native Z-score (NZ) of $Hydro$, $Rapdf$ and $Gromos$ compared with $mmSF$ for the Rosetta decoy set. Colums 5 and 6 correspond to $mmSF$ optimized for each protein whereas columns 7 and 8 correspond to $mmSF$ optimized for the whole decoy set, written $mmSF(set)$. The improvement of $mmSF$ and $mmSF(set)$ over the best value of the three individual SFs ($Hydro$, $Rapdf$ and $Gromos$) is also given in \%.}}
+\end{table}
+%
+%///////////////////////////////////////////////////////////
+%///////////////////////////////////////////////////////////
+%///////////////////////////////////////////////////////////
+%
+\begin{table}[htbp]
+\begin{center}
+\begin{tabular}{| l | c c c | c c | c c |}
+\hline
+\multicolumn{8}{|l|}{\Large \strut { Lmds }} \\
+\hline
+Protein & \multicolumn{7}{|c|}{Native Z-score (NZ)}\\
+name    & hydro & rapdf & gromos & mmSF & [\%] & mmSF(s) & [\%] \\
+\hline
+1fc2 & 2.60 & 6.33 & \textbf{-2.8} & -2.8 & \textit{\begin{small}-0.0\end{small}} & -1.6 & \textit{\begin{small}-43.\end{small}} \\
+1b0n-B & 1.79 & 0.82 & \textbf{-3.8} & -3.8 & \textit{\begin{small}-0.0\end{small}} & -3.6 & \textit{\begin{small}-6.0\end{small}} \\
+2cro & 1.98 & 1.25 & \textbf{-4.8} & -4.8 & \textit{\begin{small}-0.0\end{small}} & -4.5 & \textit{\begin{small}-7.1\end{small}} \\
+1shf-A & 1.83 & \textbf{-4.9} & -1.4 & -5.0 & \textit{\begin{small}+3.34\end{small}} & -2.8 & \textit{\begin{small}-42.\end{small}} \\
+1ctf & -1.7 & -2.9 & \textbf{-3.0} & -4.4 & \textit{\begin{small}+42.5\end{small}} & -3.9 & \textit{\begin{small}+26.4\end{small}} \\
+1igd & -0.7 & -4.4 & \textbf{-4.5} & -6.1 & \textit{\begin{small}+36.8\end{small}} & -5.6 & \textit{\begin{small}+24.7\end{small}} \\
+\hline
+Mean & \textbf{0.95} & \textbf{-0.6} & \textbf{-3.4} & \textbf{-4.5} & & \textbf{-3.6} & \\
+SD & \textit{1.75} & \textit{4.31} & \textit{1.21} & \textit{1.13} & & \textit{1.38} & \\
+\hline
+\multicolumn{8}{|l|}{\Large \strut { Fisa }} \\
+\hline
+Protein & \multicolumn{7}{|c|}{Native Z-score (NZ)}\\
+name    & hydro & rapdf & gromos & mmSF & [\%] & mmSF(s) & [\%] \\
+\hline
+1hdd-C & 0.79 & \textbf{-2.1} & -1.5 & -2.5 & \textit{\begin{small}+18.5\end{small}} & -2.4 & \textit{\begin{small}+11.0\end{small}} \\
+1fc2 & 0.13 & 2.23 & \textbf{-1.2} & -1.2 & \textit{\begin{small}-0.0\end{small}} & 0.41 & \textit{\begin{small}-132\end{small}} \\
+2cro & 1.04 & -1.6 & \textbf{-2.0} & -2.5 & \textit{\begin{small}+24.7\end{small}} & -2.5 & \textit{\begin{small}+24.7\end{small}} \\
+4icb & -1.2 & \textbf{-3.5} & -1.7 & -3.7 & \textit{\begin{small}+5.45\end{small}} & -3.3 & \textit{\begin{small}-7.8\end{small}} \\
+\hline
+Mean & \textbf{0.18} & \textbf{-1.3} & \textbf{-1.6} & \textbf{-2.5} & & \textbf{-1.9} & \\
+SD & \textit{1.01} & \textit{2.49} & \textit{0.32} & \textit{1.02} & & \textit{1.63} & \\
+\hline
+\multicolumn{8}{|l|}{\Large \strut { 4state\_reduced }} \\
+\hline
+Protein & \multicolumn{7}{|c|}{Native Z-score (NZ)}\\
+name    & hydro & rapdf & gromos & mmSF & [\%] & mmSF(s) & [\%] \\
+\hline
+2cro & -0.7 & \textbf{-2.9} & -1.6 & -3.0 & \textit{\begin{small}+4.31\end{small}} & -3.0 & \textit{\begin{small}+3.14\end{small}} \\
+1r69 & -1.6 & \textbf{-3.3} & -2.4 & -4.0 & \textit{\begin{small}+21.1\end{small}} & -3.9 & \textit{\begin{small}+17.3\end{small}} \\
+4rxn & -0.0 & \textbf{-3.2} & -2.1 & -3.6 & \textit{\begin{small}+10.1\end{small}} & -3.5 & \textit{\begin{small}+9.29\end{small}} \\
+1ctf & -1.9 & \textbf{-3.2} & -1.1 & -3.3 & \textit{\begin{small}+1.71\end{small}} & -3.3 & \textit{\begin{small}+0.12\end{small}} \\
+3icb & -1.7 & \textbf{-2.2} & -1.0 & -2.2 & \textit{\begin{small}+1.58\end{small}} & -2.2 & \textit{\begin{small}+0.96\end{small}} \\
+\hline
+Mean & \textbf{-1.2} & \textbf{-3.0} & \textbf{-1.6} & \textbf{-3.2} & & \textbf{-3.2} & \\
+SD & \textit{0.78} & \textit{0.47} & \textit{0.62} & \textit{0.67} & & \textit{0.64} & \\
+\hline
+\end{tabular}
+\end{center}
+\caption{\label{tab_value_zscore_2} \textit{
+Native Z-score (NZ) of $Hydro$, $Rapdf$ and $Gromos$ compared with $mmSF$ for the Lmds, Fisa and 4state\_reduced decoy sets. Colums 5 and 6 correspond to $mmSF$ optimized for each protein whereas columns 7 and 8 correspond to $mmSF$ optimized for the whole decoy set, written $mmSF(set)$. The improvement of $mmSF$ and $mmSF(set)$ over the best value of the three individual SFs ($Hydro$, $Rapdf$ and $Gromos$) is also given in \%.}}
+\end{table}
+%
+%///////////////////////////////////////////////////////////
+%///////////////////////////////////////////////////////////
+%///////////////////////////////////////////////////////////
+%
+\begin{table}[htbp]
+\begin{center}
+\begin{tabular}{| l | c c c | c c | c c |}
+\hline
+\multicolumn{8}{|l|}{\Large \strut { Rosetta }} \\
+\hline
+Protein & \multicolumn{7}{|c|}{Native Rank (NR)}\\
+name    & hydro & rapdf & gromos & mmSF & [\%] & mmSF(s) & [\%] \\
+\hline
+1vcc & 0.97 & \textbf{0.99} & \textbf{0.99} & 0.99 & \textit{\begin{small}+0.10\end{small}} & 0.99 & \textit{\begin{small}+0.05\end{small}} \\
+2ezh & 0.93 & \textbf{0.99} & 0.01 & 0.99 & \textit{\begin{small}+0.05\end{small}} & 0.97 & \textit{\begin{small}-2.0\end{small}} \\
+1am3 & 0.64 & \textbf{0.99} & 0.65 & 0.99 & \textit{\begin{small}+0.05\end{small}} & 0.99 & \textit{\begin{small}-0.0\end{small}} \\
+2fow & \textbf{0.74} & 0.56 & 0.16 & 0.74 & \textit{\begin{small}0.0\end{small}} & 0.46 & \textit{\begin{small}-37.\end{small}} \\
+1aa3 & \textbf{0.93} & 0.13 & 0.22 & 0.93 & \textit{\begin{small}0.0\end{small}} & 0.13 & \textit{\begin{small}-86.\end{small}} \\
+1pgx & 0.70 & \textbf{0.99} & 0.96 & 0.99 & \textit{\begin{small}+0.54\end{small}} & 0.99 & \textit{\begin{small}+0.43\end{small}} \\
+1a32 & \textbf{0.81} & 0.78 & 0.29 & 0.85 & \textit{\begin{small}+4.98\end{small}} & 0.75 & \textit{\begin{small}-6.5\end{small}} \\
+1csp & 0.80 & \textbf{0.99} & 0.97 & 0.99 & \textit{\begin{small}+0.33\end{small}} & 0.99 & \textit{\begin{small}+0.27\end{small}} \\
+2fxb & 0.35 & 0.78 & \textbf{0.71} & 0.79 & \textit{\begin{small}+1.15\end{small}} & 0.78 & \textit{\begin{small}0.0\end{small}} \\
+1ptq & 0.02 & 0.00 & \textbf{0.59} & 0.59 & \textit{\begin{small}0.0\end{small}} & 0.00 & \textit{\begin{small}-98.\end{small}} \\
+1pou & 0.01 & \textbf{0.96} & 0.61 & 0.96 & \textit{\begin{small}0.0\end{small}} & 0.95 & \textit{\begin{small}-1.5\end{small}} \\
+5pti & 0.73 & \textbf{0.97} & 0.88 & 0.97 & \textit{\begin{small}+0.77\end{small}} & 0.97 & \textit{\begin{small}+0.69\end{small}} \\
+1tuc & 0.92 & 0.96 & \textbf{0.97} & 0.99 & \textit{\begin{small}+2.54\end{small}} & 0.99 & \textit{\begin{small}+2.11\end{small}} \\
+1cc5 & 0.43 & 0.07 & \textbf{0.99} & 0.99 & \textit{\begin{small}0.0\end{small}} & 0.20 & \textit{\begin{small}-79.\end{small}} \\
+1mzm & 0.90 & \textbf{0.99} & 0.73 & 0.99 & \textit{\begin{small}0.0\end{small}} & 0.99 & \textit{\begin{small}-0.0\end{small}} \\
+1nre & 0.14 & 0.79 & \textbf{0.88} & 0.92 & \textit{\begin{small}+5.21\end{small}} & 0.84 & \textit{\begin{small}-4.3\end{small}} \\
+1vif & 0.74 & \textbf{0.99} & \textbf{0.99} & 0.99 & \textit{\begin{small}0.0\end{small}} & 0.99 & \textit{\begin{small}0.0\end{small}} \\
+1kjs & 0.01 & 0.01 & \textbf{0.93} & 0.93 & \textit{\begin{small}0.0\end{small}} & 0.02 & \textit{\begin{small}-96.\end{small}} \\
+2ptl & 0.23 & 0.16 & \textbf{0.70} & 0.70 & \textit{\begin{small}0.0\end{small}} & 0.17 & \textit{\begin{small}-74.\end{small}} \\
+1nkl & 0.87 & \textbf{0.99} & \textbf{0.99} & 0.99 & \textit{\begin{small}0.0\end{small}} & 0.99 & \textit{\begin{small}0.0\end{small}} \\
+1afi & 0.59 & 0.31 & \textbf{0.99} & 0.99 & \textit{\begin{small}+0.11\end{small}} & 0.56 & \textit{\begin{small}-42.\end{small}} \\
+1r69 & 0.07 & \textbf{0.98} & 0.96 & 0.99 & \textit{\begin{small}+1.05\end{small}} & 0.99 & \textit{\begin{small}+0.52\end{small}} \\
+1dol & 0.57 & \textbf{0.99} & 0.80 & 0.99 & \textit{\begin{small}+0.05\end{small}} & 0.99 & \textit{\begin{small}0.0\end{small}} \\
+1ctf & 0.91 & \textbf{0.99} & 0.94 & 0.99 & \textit{\begin{small}0.0\end{small}} & 0.99 & \textit{\begin{small}0.0\end{small}} \\
+1gab & 0.21 & 0.01 & \textbf{0.47} & 0.47 & \textit{\begin{small}0.0\end{small}} & 0.01 & \textit{\begin{small}-96.\end{small}} \\
+1uba & \textbf{0.69} & 0.21 & 0.00 & 0.69 & \textit{\begin{small}0.0\end{small}} & 0.10 & \textit{\begin{small}-85.\end{small}} \\
+1bq9 & 0.09 & \textbf{0.99} & \textbf{0.99} & 0.99 & \textit{\begin{small}0.0\end{small}} & 0.99 & \textit{\begin{small}0.0\end{small}} \\
+1sro & 0.52 & \textbf{0.61} & 0.38 & 0.61 & \textit{\begin{small}0.0\end{small}} & 0.60 & \textit{\begin{small}-2.4\end{small}} \\
+1bw6 & \textbf{0.61} & 0.10 & 0.13 & 0.61 & \textit{\begin{small}0.0\end{small}} & 0.07 & \textit{\begin{small}-87.\end{small}} \\
+1res & \textbf{0.37} & 0.13 & 0.20 & 0.37 & \textit{\begin{small}0.0\end{small}} & 0.11 & \textit{\begin{small}-69.\end{small}} \\
+2pdd & \textbf{0.22} & 0.20 & 0.00 & 0.22 & \textit{\begin{small}0.0\end{small}} & 0.06 & \textit{\begin{small}-69.\end{small}} \\
+5icb & \textbf{0.97} & 0.94 & 0.95 & 0.99 & \textit{\begin{small}+1.74\end{small}} & 0.97 & \textit{\begin{small}+0.05\end{small}} \\
+1hyp & 0.49 & \textbf{0.99} & 0.43 & 0.99 & \textit{\begin{small}0.0\end{small}} & 0.99 & \textit{\begin{small}-0.6\end{small}} \\
+1utg & 0.08 & 0.63 & \textbf{0.97} & 0.97 & \textit{\begin{small}0.0\end{small}} & 0.94 & \textit{\begin{small}-3.1\end{small}} \\
+1cei & 0.97 & \textbf{0.99} & \textbf{0.99} & 0.99 & \textit{\begin{small}0.0\end{small}} & 0.99 & \textit{\begin{small}0.0\end{small}} \\
+1tif & 0.41 & \textbf{0.99} & 0.20 & 0.99 & \textit{\begin{small}0.0\end{small}} & 0.99 & \textit{\begin{small}-0.6\end{small}} \\
+1lfb & 0.50 & \textbf{0.97} & 0.10 & 0.97 & \textit{\begin{small}0.0\end{small}} & 0.90 & \textit{\begin{small}-6.8\end{small}} \\
+1msi & 0.67 & 0.85 & \textbf{0.99} & 0.99 & \textit{\begin{small}0.0\end{small}} & 0.95 & \textit{\begin{small}-4.0\end{small}} \\
+1uxd & \textbf{0.34} & 0.14 & 0.24 & 0.34 & \textit{\begin{small}0.0\end{small}} & 0.13 & \textit{\begin{small}-61.\end{small}} \\
+1ail & 0.01 & \textbf{0.99} & 0.96 & 0.99 & \textit{\begin{small}+0.61\end{small}} & 0.99 & \textit{\begin{small}-0.0\end{small}} \\
+\hline
+Mean & \textbf{0.53} & \textbf{0.68} & \textbf{0.65} & \textbf{0.86} & & \textbf{0.69} & \\
+SD & \textit{0.32} & \textit{0.38} & \textit{0.36} & \textit{0.21} & & \textit{0.39} & \\
+\hline
+\end{tabular}
+\end{center}
+\caption{\label{tab_value_rank_1} \textit{
+Native rank (NR) of $Hydro$, $Rapdf$ and $Gromos$ compared with $mmSF$ for the Rosetta decoy set. Colums 5 and 6 correspond to $mmSF$ optimized for each protein whereas columns 7 and 8 correspond to $mmSF$ optimized for the whole decoy set, written $mmSF(set)$. The improvement of $mmSF$ and $mmSF(set)$ over the best value of the three individual SFs ($Hydro$, $Rapdf$ and $Gromos$) is also given in \%.}}
+\end{table}
+%
+%///////////////////////////////////////////////////////////
+%///////////////////////////////////////////////////////////
+%///////////////////////////////////////////////////////////
+%
+\begin{table}[htbp]
+\begin{center}
+\begin{tabular}{| l | c c c | c c | c c |}
+\hline
+\multicolumn{8}{|l|}{\Large \strut { Lmds }} \\
+\hline
+Protein & \multicolumn{7}{|c|}{Native Rank (NR)}\\
+name    & hydro & rapdf & gromos & mmSF & [\%] & mmSF(s) & [\%] \\
+\hline
+1fc2 & 0.00 & 0.0 & \textbf{0.99} & 0.99 & \textit{\begin{small}0.0\end{small}} & 0.99 & \textit{\begin{small}-0.8\end{small}} \\
+1b0n-B & 0.03 & 0.18 & \textbf{0.99} & 0.99 & \textit{\begin{small}0.0\end{small}} & 0.99 & \textit{\begin{small}0.0\end{small}} \\
+2cro & 0.03 & 0.10 & \textbf{0.99} & 0.99 & \textit{\begin{small}0.0\end{small}} & 0.99 & \textit{\begin{small}0.0\end{small}} \\
+1shf-A & 0.03 & \textbf{0.99} & 0.94 & 0.99 & \textit{\begin{small}0.0\end{small}} & 0.99 & \textit{\begin{small}-0.6\end{small}} \\
+1ctf & 0.96 & \textbf{0.99} & \textbf{0.99} & 0.99 & \textit{\begin{small}0.0\end{small}} & 0.99 & \textit{\begin{small}0.0\end{small}} \\
+1igd & 0.76 & \textbf{0.99} & \textbf{0.99} & 0.99 & \textit{\begin{small}0.0\end{small}} & 0.99 & \textit{\begin{small}0.0\end{small}} \\
+\hline
+Mean & \textbf{0.30} & \textbf{0.54} & \textbf{0.98} & \textbf{0.99} & & \textbf{0.99} & \\
+SD & \textit{0.43} & \textit{0.49} & \textit{0.02} & \textit{0.00} & & \textit{0.00} & \\
+\hline
+\multicolumn{8}{|l|}{\Large \strut { Fisa }} \\
+\hline
+Protein & \multicolumn{7}{|c|}{Native Rank (NR)}\\
+name    & hydro & rapdf & gromos & mmSF & [\%] & mmSF(s) & [\%] \\
+\hline
+1hdd-C & 0.21 & 0.98 & \textbf{0.99} & 0.99 & \textit{\begin{small}+0.20\end{small}} & 0.99 & \textit{\begin{small}-0.2\end{small}} \\
+1fc2 & 0.41 & 0.02 & \textbf{0.98} & 0.99 & \textit{\begin{small}+0.60\end{small}} & 0.99 & \textit{\begin{small}+0.40\end{small}} \\
+2cro & 0.14 & 0.96 & \textbf{0.99} & 0.99 & \textit{\begin{small}0.0\end{small}} & 0.99 & \textit{\begin{small}0.0\end{small}} \\
+4icb & 0.88 & \textbf{0.99} & 0.97 & 0.99 & \textit{\begin{small}0.0\end{small}} & 0.99 & \textit{\begin{small}-0.2\end{small}} \\
+\hline
+Mean & \textbf{0.41} & \textbf{0.74} & \textbf{0.98} & \textbf{0.99} & & \textbf{0.99} & \\
+SD & \textit{0.33} & \textit{0.47} & \textit{0.00} & \textit{0.00} & & \textit{0.00} & \\
+\hline
+\multicolumn{8}{|l|}{\Large \strut { 4state\_reduced }} \\
+\hline
+Protein & \multicolumn{7}{|c|}{Native Rank (NR)}\\
+name    & hydro & rapdf & gromos & mmSF & [\%] & mmSF(s) & [\%] \\
+\hline
+2cro & 0.80 & \textbf{0.99} & 0.98 & 0.99 & \textit{\begin{small}0.0\end{small}} & 0.99 & \textit{\begin{small}0.0\end{small}} \\
+1r69 & 0.92 & \textbf{0.99} & \textbf{0.99} & 0.99 & \textit{\begin{small}0.0\end{small}} & 0.99 & \textit{\begin{small}0.0\end{small}} \\
+4rxn & 0.59 & \textbf{0.99} & \textbf{0.99} & 0.99 & \textit{\begin{small}0.0\end{small}} & 0.99 & \textit{\begin{small}0.0\end{small}} \\
+1ctf & 0.96 & \textbf{0.99} & 0.90 & 0.99 & \textit{\begin{small}0.0\end{small}} & 0.99 & \textit{\begin{small}0.0\end{small}} \\
+3icb & 0.96 & \textbf{0.99} & 0.88 & 0.99 & \textit{\begin{small}0.0\end{small}} & 0.99 & \textit{\begin{small}0.0\end{small}} \\
+\hline
+Mean & \textbf{0.85} & \textbf{0.99} & \textbf{0.95} & \textbf{0.99} & & \textbf{0.99} & \\
+SD & \textit{0.15} & \textit{0.00} & \textit{0.05} & \textit{0.00} & & \textit{0.00} & \\
+\hline
+\end{tabular}
+\end{center}
+\caption{\label{tab_value_rank_2} \textit{
+Native rank (NR) of $Hydro$, $Rapdf$ and $Gromos$ compared with $mmSF$ for the Lmds, Fisa and 4state\_reduced decoy sets. Colums 5 and 6 correspond to $mmSF$ optimized for each protein whereas columns 7 and 8 correspond to $mmSF$ optimized for the whole decoy set, written $mmSF(set)$. The improvement of $mmSF$ and $mmSF(set)$ over the best value of the three individual SFs ($Hydro$, $Rapdf$ and $Gromos$) is also given in \%.}}
+\end{table}
+%
+%///////////////////////////////////////////////////////////
+%///////////////////////////////////////////////////////////
+%///////////////////////////////////////////////////////////
+%
+By looking the NR, FE and NZ of the three SFs shown on figures \ref{trio_fe},  \ref{trio_nz} and \ref{trio_nr} the following observations can be made:  (1) SF performances are protein dependant: given a SF performance measurement method (NR, FE or NZ) and a given decoy set, there is no correlation between the individual SFs performances from one protein to on other. For example in the Rosetta decoy set for the protein 2ezh (figure \ref{trio_fe}a) $rapdf$ shows from far the best FE (= 2.6) whereas both $hydro$ and $gromos$ show a FE bellow 1 (meaning no enrichment at all !); but taking the protein 1r69 $gromos$ shows the best FE (4.1) whereas $rapdf$ just reaches a FE of 1.6 and $hydro$ completely fails with a FE of 0.1. The same can be observed for NR and NZ. In other world the performance of a SF strongly depends of the protein; (2) the SF performances depend on the method used to measure the SF performance: for a given SF ($hydro$, $rapdf$ or $gromos$) there is not correlation between the three performance measure methods (NR, FE and NZ). This means that a SF having a good FE will no necesarilly perform well in NR; (3) the SF performances depend on the method used to generate the decoy set: for proteins that are present in many decoy sets (like 1ctf present in Rosetta, Lmds and 4state\_reduced, 2cro present in Fisa, Lmds and 4state\_reduced and 1r69 present in Rosetta and 4state\_reduced) the pattern of SF performances changes from one decoy set to the other. As example $gromos$ shows the best FE for the protein 1r69 originating from the Rosetta decoy set whereas it is $rapdf$ that performs best for the same protein originating from the 4state\_decoy sets.
+%========================================================
+\subsection{Improved Performance of the meta-SF approach}
+%========================================================
+ Table \ref{tab_coeff_mmSF_1} and \ref{tab_coeff_mmSF_2} shows the optimal set of $mmSF$-parameters for each protein of the four decoy sets using FE, NR and NZ as objective function. Figures \ref{trio_fe} and \ref{trio_nz} show the improvement of the FE and NZ of $mmSF$ over the individual SFs for each protein of the four decoy sets. By using the FE and the NZ as objective functions it is always possible to find a set of parameters for which the $mmSF$ performs better as any individual SFs composing it. This global performance improvement of the $mmSF$ over the individual SFs is the result of a complementary effect of $Hydro$, $Rapdf$ and $Gromos$: in situation where $Gromos$ show bad results, $Rapdf$ or $Hydro$ perform better leading to a global improvement. If this improvement is not observed when the NR is used as objective function, the meta approach is also here usefull as $mmSF$ for a given protein corresponds always to the maximum value reach by the 3 SFs.
+%==================================================
+\subsection{Knowledge-based parametrization of mmSF}
+%==================================================
+We have seen that the performances of $Gromos$, $Rapdf$ and $Hydro$ present strong fluctuations from (1) one protein to an other, (2) from one decoy set to an other and (3) from one objective function to an other. We show here that the parameterization and thus the performances of $mmSF$ also strongly dependant on the nature of the protein, the decoy set and on the objective function used in the optimization.
+\textbf{Protein specific parametrization: } when $mmSF$ is optimized for different proteins originating of the same decoy set, the parameters change. This can be seen in table \ref{tab_coeff_mmSF_1} and \ref{tab_coeff_mmSF_2}. This means that within a decoy set (or a protein structure prediction method) if one aims to maximize the SF performance one has to use for each protein fold different sets of parameters.
+\textbf{Decoy specific parametrization: } apart the dependance of the nature of the protein, the parameterization depands also on the structure prediction method used to generate the decoys. When $mmSF$ is optimized on the same protein originating from different decoy sets using the same objective function, different set of parameters are shown. Figure \ref{fig_training_set_2cro} shows the parameter variations when $mmSF$ is optimized for the protein 2cro originating from three different decoy sets using the same objective function (FE).
+\textbf{Objective function specific parametrization:} figure \ref{fig_objective function_1afi} shows the performance of $mmSF$ optimized using three different objective functions (NR, FE and NZ) for the same protein originating form the same decoy set. We can see that the parameters that maximize the FE ($(a,b,c)=(0.28,0,0.96)$) are different from parameters that maximize the NR ($(a,b,c)=(0.27,0.55,0.79)$) or the NZ ($(a,b,c)=(0,0,1)$).
+
+\begin{table}[htbp]
+\begin{center}
+%////////////////////////////////////////////////////////////////////////
+\begin{tabular}{| l | c c c | c c c | c c c |}
+\hline
+Protein  & \multicolumn{3}{| c |}{objective function = NR} & \multicolumn{3}{| c |}{objective function = FE} & \multicolumn{3}{| c |}{objective function = NZ}\\
+Rosetta & \begin{small}Hydro\end{small} & \begin{small}Rapdf\end{small} & \begin{small}Gromos\end{small} & \begin{small}Hydro\end{small} & \begin{small}Rapdf\end{small} & \begin{small}Gromos\end{small} & \begin{small}Hydro\end{small} & \begin{small}Rapdf\end{small} & \begin{small}Gromos\end{small}\\
+ & a & b & c & a & b & c & a & b & c \\
+\hline
+mmSF(set) &   \textbf{0.03} &   \textbf{0.95} &   \textbf{0.31} &   \textbf{0.0}  &   \textbf{0.51} &   \textbf{0.86} & \textbf{0.0} & \textbf{0.8} & \textbf{0.6} \\
+\hline
+  1vcc &   0.62 &   0.26 &   0.74 &   0.84 &   0.47 &   0.27 &   0.14 &   0.39 &   0.91 \\
+  2ezh &   0.14 &   0.99 &   0.01 &   0.14 &   0.99 &   0.01 &   0.28 &   0.96 &   0.0 \\
+  1am3 &   0.0 &   0.96 &   0.28 &   0.0 &   0.99 &   0.14 &   0.0 &   0.96 &   0.28 \\
+  2fow &   1.0 &   0.0 &   0.0 &   0.29 &   0.79 &   0.54 &   1.0 &   0.0 &   0.0 \\
+  1aa3 &   1.0 &   0.0 &   0.0 &   0.21 &   0.73 &   0.65 &   1.0 &   0.0 &   0.0 \\
+  1pgx &   0.14 &   0.71 &   0.69 &   0.14 &   0.0 &   0.99 &   0.0 &   0.6 &   0.8 \\
+  1a32 &   0.86 &   0.51 &   0.01 &   0.28 &   0.0 &   0.96 &   0.6 &   0.8 &   0.0 \\
+  1csp &   0.01 &   0.51 &   0.86 &   0.28 &   0.96 &   0.0 &   0.0 &   0.6 &   0.8 \\
+  2fxb &   0.0 &   0.99 &   0.14 &   0.01 &   0.99 &   0.14 &   0.0 &   0.99 &   0.14 \\
+  1ptq &   0.0 &   0.0 &   1.0 &   0.24 &   0.03 &   0.97 &   0.0 &   0.0 &   1.0 \\
+  1pou &   0.0 &   1.0 &   0.0 &   0.28 &   0.0 &   0.96 &   0.0 &   0.99 &   0.14 \\
+  5pti &   0.0 &   0.96 &   0.28 &   0.01 &   0.14 &   0.99 &   0.0 &   0.96 &   0.28 \\
+  1tuc &   0.27 &   0.52 &   0.81 &   0.33 &   0.16 &   0.93 &   0.2 &   0.45 &   0.87 \\
+  1cc5 &   0.0 &   0.0 &   1.0 &   0.05 &   0.13 &   0.99 &   0.0 &   0.0 &   1.0 \\
+  1mzm &   0.0 &   1.0 &   0.0 &   0.0 &   1.0 &   0.0 &   0.03 &   0.97 &   0.24 \\
+  1nre &   0.0 &   0.51 &   0.86 &   0.03 &   0.31 &   0.95 &   0.0 &   0.51 &   0.86 \\
+  1vif &   0.61 &   0.33 &   0.72 &   0.01 &   0.51 &   0.86 &   0.14 &   0.69 &   0.71 \\
+  1kjs &   0.0 &   0.0 &   1.0 &   0.0 &   0.14 &   0.99 &   0.0 &   0.0 &   1.0 \\
+  2ptl &   0.0 &   0.0 &   1.0 &   0.0 &   0.51 &   0.86 &   0.0 &   0.0 &   1.0 \\
+  1nkl &   0.61 &   0.33 &   0.72 &   0.16 &   0.93 &   0.33 &   0.0 &   0.6 &   0.8 \\
+  1afi &   0.28 &   0.0 &   0.96 &   0.27 &   0.55 &   0.79 &   0.0 &   0.0 &   1.0 \\
+  1r69 &   0.0 &   0.51 &   0.86 &   0.01 &   0.14 &   0.99 &   0.0 &   0.8 &   0.6 \\
+  1dol &   0.05 &   0.99 &   0.13 &   0.11 &   0.93 &   0.35 &   0.0 &   0.96 &   0.28 \\
+  1ctf &   0.43 &   0.87 &   0.24 &   0.36 &   0.07 &   0.93 &   0.07 &   0.9 &   0.43 \\
+  1gab &   0.0 &   0.0 &   1.0 &   0.07 &   0.27 &   0.96 &   0.0 &   0.0 &   1.0 \\
+  1uba &   1.0 &   0.0 &   0.0 &   0.67 &   0.72 &   0.18 &   1.0 &   0.0 &   0.0 \\
+  1bq9 &   0.35 &   0.47 &   0.81 &   0.0 &   0.0 &   1.0 &   0.0 &   0.6 &   0.8 \\
+  1sro &   0.0 &   1.0 &   0.0 &   0.12 &   0.21 &   0.97 &   0.0 &   1.0 &   0.0 \\
+  1bw6 &   1.0 &   0.0 &   0.0 &   0.0 &   1.0 &   0.0 &   1.0 &   0.0 &   0.0 \\
+  1res &   1.0 &   0.0 &   0.0 &   0.02 &   0.34 &   0.94 &   1.0 &   0.0 &   0.0 \\
+  2pdd &   1.0 &   0.0 &   0.0 &   0.0 &   0.0 &   1.0 &   1.0 &   0.0 &   0.0 \\
+  5icb &   0.34 &   0.38 &   0.86 &   0.21 &   0.97 &   0.12 &   0.52 &   0.27 &   0.81 \\
+  1hyp &   0.0 &   1.0 &   0.0 &   0.81 &   0.27 &   0.52 &   0.0 &   1.0 &   0.0 \\
+  1utg &   0.03 &   0.31 &   0.95 &   0.59 &   0.45 &   0.67 &   0.0 &   0.14 &   0.99 \\
+  1cei &   0.74 &   0.26 &   0.62 &   0.71 &   0.65 &   0.27 &   0.21 &   0.5 &   0.84 \\
+  1tif &   0.0 &   1.0 &   0.0 &   0.55 &   0.83 &   0.09 &   0.0 &   1.0 &   0.0 \\
+  1lfb &   0.0 &   1.0 &   0.0 &   0.03 &   0.24 &   0.97 &   0.0 &   1.0 &   0.0 \\
+  1msi &   0.14 &   0.01 &   0.99 &   0.14 &   0.91 &   0.39 &   0.0 &   0.14 &   0.99 \\
+  1uxd &   1.0 &   0.0 &   0.0 &   0.03 &   0.97 &   0.24 &   1.0 &   0.0 &   0.0 \\
+  1ail &   0.01 &   0.51 &   0.86 &   0.01 &   0.99 &   0.14 &   0.0 &   0.6 &   0.8 \\
+\hline
+\end{tabular}
+\end{center}
+\caption{\label{tab_coeff_mmSF_1} \textit{
+Parameter variations of $mmSF$ when optimized for different proteins of the Rosetta decoy set using three different objective functions : the native rank (NR), the fraction enrichment (FE) and the native Z-score (NZ).}}
+\end{table}
+
+\begin{table}[htbp]
+\begin{center}
+\begin{tabular}{| l | c c c | c c c | c c c |}
+\hline
+\multicolumn{10}{|l|}{\Large \strut {Lmds}} \\
+\hline
+Protein  & \multicolumn{3}{| c |}{objective function = NR} & \multicolumn{3}{| c |}{objective function = FE} & \multicolumn{3}{| c |}{objective function = NZ}\\
+ & a & b & c & a & b & c & a & b & c \\
+\hline
+mmSF(set)  &   \textbf{0.0} &   \textbf{0.14} &   \textbf{0.99} &   \textbf{0.15}  &   \textbf{0.45} &   \textbf{0.88} & \textbf{0.0} & \textbf{0.28} & \textbf{0.96} \\
+\hline
+  1fc2 &   0.0 &   0.0 &   1.0 &   0.43 &   0.57 &   0.7 &   0.0 &   0.0 &   1.0 \\
+  1b0n-B &   0.24 &   0.03 &   0.97 &   0.5 &   0.21 &   0.84 &   0.0 &   0.0 &   1.0 \\
+  2cro &   0.31 &   0.03 &   0.95 &   0.18 &   0.32 &   0.93 &   0.0 &   0.0 &   1.0 \\
+  1shf-A &   0.28 &   0.96 &   0.0 &   0.07 &   0.99 &   0.12 &   0.0 &   0.96 &   0.28 \\
+  1ctf &   0.72 &   0.33 &   0.61 &   0.02 &   0.34 &   0.94 &   0.13 &   0.51 &   0.85 \\
+  1igd &   60.72 &   0.63 &   0.29 &   0.34 &   0.86 &   0.38 &   0.0 &   0.6 &   0.8 \\
+\hline
+\multicolumn{10}{|l|}{\Large \strut {Fisa}}\\
+%& & & & & & & & & & & &\\
+\hline
+mmSF(set) &   \textbf{0.13} &   \textbf{0.05} &   \textbf{0.99} &   \textbf{0.14}  &   \textbf{0.69} &   \textbf{0.71} & \textbf{0.0} & \textbf{0.6} & \textbf{0.8} \\
+\hline
+  1hdd-C &   0.16 &   0.33 &   0.93 &   0.24 &   0.97 &   0.03 &   0.0 &   0.86 &   0.51 \\
+  1fc2 &   0.14 &   0.01 &   0.99 &   0.28 &   0.0 &   0.96 &   0.0 &   0.0 &   1.0 \\
+  2cro &   0.26 &   0.22 &   0.94 &   0.27 &   0.79 &   0.55 &   0.0 &   0.6 &   0.8 \\
+  4icb &   0.81 &   0.53 &   0.25 &   0.48 &   0.77 &   0.42 &   0.02 &   0.94 &   0.34 \\
+\hline
+\multicolumn{10}{|l|}{\Large \strut {4state\_reduced } }\\
+\hline
+mmSF(set) &   \textbf{0.36} &   \textbf{0.8} &   \textbf{0.48} &   \textbf{0.01}  &   \textbf{0.86} &   \textbf{0.51} & \textbf{0.04} & \textbf{0.75} & \textbf{0.66} \\
+\hline
+  2cro &   0.67 &   0.59 &   0.45 &   0.0 &   0.51 &   0.86 &   0.21 &   0.84 &   0.5 \\
+  1r69 &   0.77 &   0.63 &   0.1 &   0.02 &   0.94 &   0.34 &   0.1 &   0.5 &   0.86 \\
+  4rxn &   0.55 &   0.79 &   0.27 &   0.12 &   0.75 &   0.65 &   0.0 &   0.8 &   0.6 \\
+  1ctf &   0.92 &   0.39 &   0.03 &   0.51 &   0.86 &   0.01 &   0.0 &   0.96 &   0.28 \\
+  3icb &   0.36 &   0.8 &   0.48 &   0.11 &   0.87 &   0.48 &   0.11 &   0.87 &   0.48 \\
+\hline
+\end{tabular}
+\end{center}
+\caption{\label{tab_coeff_mmSF_2} \textit{
+Parameter variations of $mmSF$ when optimized for different proteins of the Lmds, fisa and 4state\_reduced decoy sets using three different objectif functions : the native rank (NR), the fraction enrichment (FE) and the native Z-score (NZ).}}
+\end{table}
+%////////////////////////////////////////////////////////////////////////
+
+
+%///////////////////////////////////////////////
+\begin{figure}
+\renewcommand{\thesubfigure}{(\arabic{subfigure})}
+\centering
+\mbox{\subfigure[mmSF(FE,2cro) - fisa]{\resizebox{220pt}{!}{\includegraphics{png/fisa_2cro_mscore_FE.png}}}\quad
+      \subfigure[mmSF(FE,2cro) - lmds]{\resizebox{220pt}{!}{\includegraphics{png/lmds_2cro_mscore_FE.png}}}}
+\mbox{\subfigure[mmSF(FE,2cro) - 4state\_reduced]{\resizebox{220pt}{!}{\includegraphics{png/4state_reduced_2cro_mscore_FE.png}}}}
+\caption{\label{fig_training_set_2cro}\small\textit{Variation of the $mmSF$ parameters for different training sets: using the same objective function, here the fraction enrichment (FE), $mmSF$ is parameterized for the protein 2cro originating from 3 different decoy sets: fisa in (1), lmds in (2) and 4state\_reduced in (3). The green line indicate the position of the native structure. The red points represent the conformations having low native RMSD values and high mmSF scores.}}
+\end{figure}
+%//////////////////////////////////////////////
+
+%/////////////////////////////////////////////////////////
+\begin{figure}
+\renewcommand{\thesubfigure}{(\arabic{subfigure})}
+\centering
+\mbox{\subfigure[hydro - 1afi - Rosetta]{\resizebox{200pt}{!}{\includegraphics{png/rosetta_1afi_hydro_mscore.png}}}\quad
+      \subfigure[mmSF(NR,1afi) - Rosetta]{\resizebox{200pt}{!}{\includegraphics{png/rosetta_1afi_mscore_NR.png}}}}
+\mbox{\subfigure[rapdf - 1afi - Rosetta]{\resizebox{200pt}{!}{\includegraphics{png/rosetta_1afi_rapdf_mscore.png}}}\quad
+      \subfigure[mmSF(FE,1afi) - Rosetta]{\resizebox{200pt}{!}{\includegraphics{png/rosetta_1afi_mscore_FE.png}}}}
+\mbox{\subfigure[gromos - 1afi - Rosetta]{\resizebox{200pt}{!}{\includegraphics{png/rosetta_1afi_gromos_mscore.png}}}\quad
+      \subfigure[mmSF(NZ,1afi) - Rosetta]{\resizebox{200pt}{!}{\includegraphics{png/rosetta_1afi_mscore_NZ.png}}}}
+\caption{\label{fig_objective function_1afi}\small\textit{Dependence of the parameterization of $mmSF$ on the objective function used: comparative performance of $Hydro$, $Rapdf$, $Gromos$ and $mmSF$ of the protein 1afi of the Rosetta decoy set. The green line indicate the rank of native conformation. Conformations that are ranked in the top 10\% of the score list and that belong to the 10\% lowest RMSD conformations are show in red. The set of parameters (a,b,c) obtained after optimization using NR, FE and NZ as objective function are also shown.}}
+\end{figure}
+%////////////////////////////////////////////////////////
+
+%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%
+\section{DISCUSSION}
+%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%
+The results showing the performances of $Gromos$, $Rapdf$ and $Hydro$ suggest that it is unlikely to find an "universal" SF that is based on a single approach  (having one unique set of parameters) that is able to perform well in any situations. If any way one aims to develop a SF that is based on a unique approach, that can be used for any protein folds, one have to take care to parameterize it for the same structure prediction method and the same SF performance measurement method than those used for the protein that has to be evaluated.
+%===================================================================
+\subsection{Advantages of the meta approach over the hybrid approach}
+%====================================================================
+In order to take advantage of the strength of each approach an other strategy is to combine different SFs in a hybrid-SF. Where one approach fails, an other can perform well leading to a global improvement. If many H-SFs have been designed and used with relative success, they present some difficulties: (a) the selection of the empirical descriptors or scoring terms depends strongly on the domain of application. Not the same descriptors are used for comparative modeling, fold recognition, \textit{ab-initio} structure prediction or \textit{de-novo} protein design. For example in \textit{ab-initio} structure prediction, where a large number of conformations have to be evaluated, the speed of the SF is a major selection criteria. Thus in the majority of cases S-SFs are preferred. On the other hand in comparative modelling the most important selection criteria is the accuracy of the SF; thus here molecular mechanics FFs are more appropriate. (b)  they are most of the time parameterized for a specific problem domain and thus are badly transferable. This means that an H-SF  parameterized using the NR as objective function will show bad performances in FE. The same is true when one go from one protein to an other or from one decoy set to an other; (c) as the empirical terms of an H-SF can be of any types (energy values $[kJ/mol]$, volumes $[Ang^{3}]$, surfaces $[Ang^{2}]$, empirical scores $[-]$, sequence identity $[\%]$, ...), the selection of a functional form to combine the scoring terms is difficult and in most of the case non-linear; (d) many existing H-SFs mix terms that are based on the same approach leading to collinear terms. If this collinearity can be partially resolved by the optimization method, this has a bad impact on the robustness of the H-SFs; (e) finally the design and parametrization of an H-SF is difficult and most of the time based a trial-error approach.
+
+To address the difficulties associated with the design of H-SFs, we replace the hybrid-SF approach by a meta-SF approach: instead of taking heterogen empirical features that are difficult to parameterize and can present an implicit collinear character, we use normalized univariate discriminative SFs. This basis set of SFs have to fullfill four conditions: (1) they have to be univariate or mono-feature: only one protein feature per SF is allowed; (2) the SF has to be normalized: it takes as argument any conformation and return a value between 0 and 1; (3) if the same feature is used by two different SFs, they have to be based on different approaches (either be member of P-SFs, S-SFs or E-SFs); (4) each SF has to demonstrate, taking alone, a reasonable discriminative potential.
+This set of normalized univariate discriminative SFs can be extended by and has as many elements as there is protein features following the four rules sited in the previous section. By taking a given selection of terms one can easily modulate $mmSF$ for different problem domains.
+The meta approach has many advantages over the hybrid-SF approach: (a) one has to mix normalized discriminant SF that all take as argument a protein conformation and return a value between 0 and 1. Irrelevant of the principles used in the discrimination, they are all of the same nature. This enables us to use a simple linear functional form to combine them; (b) terms can be added or deleted without having to change the functional form; (c) the performance of each term can be address independantelly.
+%===================================================================
+\subsection{Use of the mmSF approach in protein structure prediction}
+%====================================================================
+Protein structure prediction methods can be classified into two main classes: the first class includes threading and comparative modeling methods that rely on detectable similarity spanning most of the modeled sequence and at least one known structure; the second class of methods, de novo or ab initio methods, predict the structure from sequence alone, without relying on similarity at the fold level between the modeled sequence and any of the known structures. As prerequisit a set of mono-feature discriminant SFs is needed.
+
+In the first class of prediction methods there is one or more known structures that can be used as template for the prediction. These templates will be used to first parameterize $mmSF$ specifically for the protein fold that has to be modelled as well as the modeling procedure that will be used. In this case a little number of conformations will be produced and one is interersted to select the best model. So the appropriate objective function is here the native rank. Using the same protocol as the one used for the prediction, each of the n template structures are predicted by using the n-1 remaining templates. For each conformations the individual SFs are calculated. Then by using the native rank as objective function and the n decoy sets one can determine the optimal linear combination of the individual SFs that maximize the native rank. Finally these parameters can be used to predict the target structure by using the n template.
+
+In the second class of methods where no template structures can be found, a large number of decoy conformatinons has to be generated. Here one is interested no more in pickinig out the native structure but more in be able to indetified native like conformations. Thus as objective function for the optimization of mmSF one will use either the fraction enrichment or the native Z-score. For a given template structure that has to be predicted one will have in a first round to parameterized $mmSF$ specifically for the protein strucuture protocol that will be used by using the FE or the NZ as objective functions. A first training set has to be designed. One  selects n proteins of the same length as the target protein. For each of the n training set proteins a decoy set has to be generated using the same procedure as the one that will be used for the final prediction. Then for each decoy conformations the individual SFs have to be evaluated. Then by these n decoy sets and either the FE or the NZ as objective function the optimal linear combination of the individual SFs can be found. Finally these parameters can be used to predict the target structure.
+%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%
+\section{CONCLUSION}
+%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%
+In this study we first show that physics-based, statistics-based and empirical SFs show strong performance variations in their ability to discriminate native-like from wrong protein conformations. These variations depend on the protein fold family, on the protein structure prediction method and on the method used to measure the SF performance. Then we show how a linear combination of these normalized individual SFs when optimized for a specific protein originating from a specific protein decoy set can performe better as any individual SFs composing it.
+%
+% Again as for the individual performance ofThe results of the optimization emphasize the importance to specifically parameterize $mmSF$then show how these individual SFs can be linearelly combined in a meta SF can be defined fold, the  their ability to either
+%
+% If in theory it should be possible to develop from the first principles a potential energy function for the protein folding problem that can simulate both the thermodynamic and kinetic processes, the complexity of the problem, involving thousands of atoms and extremely large number of conformations available to these atoms, the available computational power posses a serious restriction. It is also known that statistics-based, physics-based and empirical SFs present different strengths and weaknesses leading to different domains of validity. The heterogeneous nature of the protein ensemble coupled to the variation of the domains of validity of SFs based on different grounds can explain why individual SFs rooted on different approaches when applied in the discrimination of native like conformations of different proteins lead to very fluctuating results. This is what we first illustrate in this work.
+% % \textit{large scale minimization with gromos ... computer intensive}
+%
+%
+% If all proteins are built by assembling twenty basic building blocks, their properties, like size, shape, volume, surface area, polarity or secondary structure compositions, present large variations making them a very heterogeneous ensemble. The three dimensional arrangement of the amino acid chain is in part determined by the physical process of folding and on the other part is the result of a long evolution. Indeed the fact that an heteropolymer is able to fold at physiological conditions to always the same conformation in an acceptable time is, on a thermodynamic and kinetic point of view, rather an exception as a rule. This means that each protein is a product of a long evolution, is  a highly optimized system.
+%
+%
+% We show the need of parameterizing the SF for a specific protein fold, for a specific method of generation of the three dimensional model and for a spe
+%
+%
+% If in theory it should be possible to develop from the first principles a potential energy function for the protein folding problem that can simulate both the thermodynamic and kinetic processes, the complexity of the problem, involving thousands of atoms and extremely large number of conformations available to these atoms, the available computational power posses a serious restriction. It is also known that statistics-based, physics-based and empirical SFs present different strengths and weaknesses leading to different domains of validity. The heterogeneous nature of the protein ensemble coupled to the variation of the domains of validity of SFs based on different grounds can explain why individual SFs rooted on different approaches when applied in the discrimination of native like conformations of different proteins lead to very fluctuating results. This is what we first illustrate in this work.
+%
+%
+%
+%
+% What about the computer time to calculate the different SFs ?
+%
+%
+% Systematic use of the ff
+%
+%
+% How to deal with the fact that the optimization has to be performed for each protein ?
+%
+%
+% Can we not speak of overfitting ?
+%
+%
+% If a large part of the decoys are native-like (RMSD < 3 A) to rank the native conformation at the top will be more difficult as if the major part of decoys are far from the native conformation.
+%
+%
+% The differential domain of validity of SFs rooted on different approaches has motivated the development of H-SFs. The idea is to mix together different SFs in order to obtain a complementary effect where one SF can compensate the bad performance of an other leading to a global improvement. But if the idea in theory seems to be nice in practice the design of an H-SF is difficult and highly empiric. Indeed one have to first select terms (descriptors or protein features) that are, if possible, not collinear, then find the right functional form (the right model) to combine them and finally be able to parameterized it. If one select terms that are collinear, the expected complementary effects of the hybrid approach is loosen. Then finding a functional form is especially difficult as the  terms that have to be mixed together have of very different natures and sources (energy values, polar accessible surface, ...). Finally the parameterization of the model will strongly depend on the training set and the optimization method used. All these difficulties make the design of an H-SF an empirical process based manly on a trial-error approach leading most of the time to SFs that are very badly portable.
+%
+% In this study we propose a rational approach that aims to solve this design problem by introducing to main ideas: (1)
+% the hybrid approach is replaced by a meta approach and (2) the design process is subdivided in five independent subproblems each addressing a different problems.
+%
+%
+% \textbf{Meta SF instead of Hybrid SF}: we first replace the H-SF approach by a meta SF approach: instead of mixing heterogeneous empirical terms we combine carefully selected normalized SFs: these selected normalized SFs have to be based on one unique protein feature, present individually a clear discrimination ability and if the same feature is used by two SFs, they have to be based on different approaches. In this study we use a simple set of three SFs, each rooted on a different approach and we show that when optimized on a given protein we can always find a linear combination that performs better as any individual SFs. This parameterization have to be done for each protein. Indeed we also show that if the optimization is made on the whole decoy set, the advantage given by the complementary effect is partially loosen.
+%
+%
+% \textbf{Divide-and-conquer approach}: we reformulate the scoring scheme by using a model inspired by pattern classification used in machine learning approaches: the SF can be considered as a diadyc classifier that has to discriminate between native like and non-native conformations. The design of this classifier is divided in 5 different subproblems, each implemented in an independent module: the first module selects protein features, calculate and normalize them; the second uses a mathematic function to combine the different terms in a model; than the third module defines the objective or cost function that will be used in the parameterization by the fourth module that is a set of optimization engines; and finally the fifth module defines and manages the dataset used as training set. The modular treatment of the problem have the following advantages: (1) each potential sources of errors can be treated individually, (2) each part can be replaced, improved without changing the rest of the scoring function. Existing codes can be integrated and used (optimization methods), (3) easily implemented using an object oriented design, (4) the features space are calculated only once at the beginning.
+% %This design process involving interdependant successive steps leads to an error accumulation.
+% %the complementary effects that are rooted on different a. that can be easily automatised the design  is that many times in variable success. lead to the fact that it is unlikely to find one unique SF that will be successfull in all cases.
+%
+%
+% By taking one or more objects of each module it is possible to build a large variety of SFs that are tailored for specific protein fold, prediction engines or problem domains. This modular (object oriented) architecture permits (1) to set up a very flexible H-SF design strategies, (2) to automatize the design process using a machine learning approach, (3) to easily integrates already existing codes (optimization methods, SFs, ...), human know-how (smart feature selection, objective function and model definition) and (4) to separate the different sources of errors affecting the parameterization. This study show that up to now the approach consisting in the development of one universal SF that performs well for any protein, without taking into account the structure prediction method used to generate it, is not possible. A intermediate approach is to set up a SF factory that build on-the-fly a modular meta SF and uses machine learning methods to parameterized it for specific protein folds, specific structure prediction engines and specific objectives.
+%
+% \textit{independence of STs}
+% This is especially difficult by protein as their folding and final 3D structure are mainly convern by highly cooperative non-bonding interactions.
+%
+%
+% \textit{Which terms to select ?}
+%
+%
+% \textit{optimization methods}
+% multiobjectif  optimization
+%
+%
+%
+% This modularity enables us to evaluate the impact on the performance of each step in the SF-design,
+%
+%
+% \textit{Influence of the training set}
+% Various decoy sets have been created \cite{tsai:decoys, Samudrala:decoyR, parklevit:decoy, simons:decoy, kesar:decoy, samudrala:decoy1,Xia:decoy }. Depending on the methods and energy functions used, the quality and quantity of the decoys can vary dramatically. As pointed out in \cite{parklevit:decoy} and \cite{tsai:decoys} an optimal decoy set should (1) contains conformations for a wide variety of different proteins to avoid over-fitting, (2) contains conformations close ( $< 4$ \AA ) to the native structure because structures more distant from the native structure may not be in the native structure's energy basin and thus impossible to recognize, (3) consist of conformations that are at least near local minima of a reasonable scoring function, so they are not trivially excludable based on obviously non protein like features and (4) be produced by a relatively unbiased procedure that does not use information from the native structure during the conformational search.
+%
+%
+% What is the impact of the minimization on the structure ?
+%
+%
+% Why it is important to first minimize and than to calculate the energy
+%
+%
+% fusion of 2cro.Rosetta, 2cro.lmds and 2cro.fisa then optimization ...
+%
+%
+% FE is based on RMSD !!!! is this measure of native-likellyness really pertinent ???
+%
+%
+% Moreover the fact that a specific amino acid sequence folds at physiological conditions in an acceptable time to a unique three dimensional structure is for an heteropolymer on a thermodynamic and kinematic point of view, rather an exception as a rule. This means that we are studying an ensemble Each protein fold is the result of a long optimization where that has lead to the actual protein structures.
+%
+%
+% Is rmsd a good measure of native likeness ?
+%
+%
+% Discussion about the difference between enrichment and z-score ?
+%
+%
+% If we optimize for each protein is it not an overfitted ?
+%
+%
+% non collinearity of the term and global improvement
+%
+%
+% bias of the training sets (to few decoy sets)
+%
+%
+%  Therefore, the goal of testing on a wide variety and large number of decoy sets is to provide a rigorous evaluation of how well a scoring function works.
+%
+%
+% \textit{If more as 70\% of the conformations have an RMSD bellow 6 A, the discrimination task will be more difficult as if 70\% of the conformations has an RMSD above 6 A. Which impact has the RMSD distribution on the optimization ? NR, EF and ZN present not the same sensibility to the RMSD distribution ?}
+%
+%
+% why the individual SF performance as well as the mmSF are strongly dependant of the nature of the protein ?
+% variation in size, shape, surface
+% each protein is an optimized systems
+%
+%
+% use of other objecive functions
+%
+%
+% more descriptors
+%
+%
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{thebibliography}{99}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%-----------------------------------------------------------------------------
+% for history
+%-----------------------------------------------------------------------------
+\bibitem{anf:fol}Anfinsen, C. B.
+\emph{Principles that govern the folding of protein chains}
+Science. 181(96):223-30 (1973)
+%-----------------------------------------------------------------------------
+% decoy sets
+%-----------------------------------------------------------------------------
+\bibitem{tsai:decoys}Tsai, J.
+\emph{An Improved Protein Decoy Set for Testing Energy Functions for Protein Structure Prediction}
+Proteins 53:76-87 (2003)
+\bibitem{Samudrala:decoyR}
+\emph{Decoys 'R' Us: a database of incorrect conformations to improve protein structure prediction}
+Protein Sci 9:1399-1401 (2000)
+\bibitem{parklevit:decoy}
+Park B, Levitt M.
+\emph{Energy functions that discriminate X-ray and near native folds from well-constructed decoys}
+J Mol Biol 258:367-392 (1996)
+\bibitem{simons:decoy}
+Simons KT, Kooperberg C, Huang ES, Baker D.
+\emph{Assembly of protein tertiary structures from fragments with similar local sequences using simulated annealing and Bayesian SFs}
+J Mol Biol 268:209-225 (1997)
+\bibitem{kesar:decoy}
+Kesar C.
+\emph{In preparation}
+1999.
+\bibitem{samudrala:decoy1}
+Samudrala R, Xia Y, Levitt M, Huang ES.
+\emph{A combined approach for ab initio construction of low resolution protein tertiary structures from sequence}
+Proceedings of the Pacific Symposium on Biocomputing, 1999 (submitted).
+\bibitem{Xia:decoy}
+Xia Y, Huang ES, Ponder J, Levitt M, Samudrala R.
+\emph{Ab initio generation and selection of low resolution protein conformations}
+In preparation, 1998.
+%------------------------------------------------------------------------------------------
+% PDB
+%------------------------------------------------------------------------------------------
+\bibitem{sand:sel1}
+U.Hobohm, M.Scharf, R.Schneider, C.Sander
+\emph{Selection of a representative set of structures from the Brookhaven Protein Data Bank}
+Protein Science 1 (1992), 409-417.
+%------------------------------------------------------------------------------------------
+% PDBselect
+%------------------------------------------------------------------------------------------
+\bibitem{sand:sel2}
+U.Hobohm, C.Sander
+\emph{Enlarged representative set of protein structures}
+Protein Science 3 (1994) 522
+\bibitem{pdbs:data}
+H.M. Berman, J. Westbrook, Z. Feng, G. Gilliland, T.N. Bhat, H. Weissig, I.N. Shindyalov, P.E. Bourne
+\emph{The Protein Data Bank}
+Nucleic Acids Research, 28 pp. 235-242 (2000)
+%------------------------------------------------------------------------------------------
+% physics-based SF
+%------------------------------------------------------------------------------------------
+\bibitem{lee:opt}Lee, J.
+\emph{Optimization of Parameters in Macromolecular Potential Energy Functions by Conformational Space Annealing}
+J. Phys. Chem. B 105:7291-7298 (2001)
+\bibitem{vanGunsteren:gromos01}
+W.F. Van Gunsteren, S.R. Billeter, P.H. Hnenberger, A.A. Eising, P. Krueger, A.E. Marc, W.R.P. Scott and I.G. Tironi
+\emph{Biomolecular Simulation: the gromos96 Manual and user Guide}
+Biomos b.V.: Zurich and Groningen, 1996
+\bibitem{ponder:paper01}
+J.W. Ponder, D.A. Case
+\emph{Force fields for protein simulations}
+Adv. Prot. Chem. 66, 27-85 (2003)
+\bibitem{brooks:charm}
+B. R. Brooks, R. E. Bruccoleri, B. D. Olafson, D. J. States, S. Swaminathan, and M. Karplus
+\emph{CHARMM: A Program for Macromolecular Energy, Minimization, and Dynamics Calculations}
+J. Comp. Chem. 4, 187-217 (1983)
+\bibitem{jorgensen:OPLS}
+Jorgensen, W. L., Tirado-Rives, J.
+\emph{The OPLS Potential Functions for Proteins. Energy Minimization for Crystals of Cyclic Peptides and Crambin}
+J. Am. Chem. Soc. 110, 1657-1666 (1998)
+\bibitem{levitt:ENCAD}
+M. Levitt, M. Hirshberg, R. Sharon, V. Daggett
+\emph{Potential energy function and parameters for simulations of the molecular dynamics of proteins and nucleic acids in solution}
+Computer Physics, communications 91, 215-231, (1995)
+
+% Molecular Mechanics + free energy of solvation
+% MMGB/SA
+\bibitem{Zhu:gromos96gbsa}
+J. Zhu, Q. Zhu, Y. Shi and H. Liu
+\emph{How Well Can We Predict Native Contacts in Proteins Based on Decoy Structures and their Energies ?}
+Proteins 52:598-608 (2003)
+\bibitem{Felts:OPLSsgb}
+A. K. Felts, A. Wallqvist, R.M. Levy
+\emph{Distinguishing Native Conformations of Proteins From Decoys With an Effective Free Energy Estimator Based on the OPLS All-atom Force field and the surface Generalized Born solvent Model}
+Proteins 48:404-422 (2002)
+\bibitem{Lee:CHARMMmdgb}
+M. C. Lee, Y. Duan
+\emph{Distinguish Protein Decoys by Using a Scoring Function Based on a New AMBER Force Field, Short Molecular Dynamics Simulations, and the Generalized Born Solvent Model}
+Proteins, 55:620-634 (2004)
+\bibitem{Luo:Amberpb}
+M.-J. Hsieh, R. Luo
+\emph{Physical Scoring Function Based on AMBER Force Field and Poisson-Bolzmann Implicit Solvent for Protein Structure Prediction}
+PROTEINS, 56:475-486 (2004)
+
+
+
+%------------------------------------------------------------------------------------------
+% Empirical SFs
+%------------------------------------------------------------------------------------------
+Robetta decoy set
+% Hydrophobicity
+\bibitem{bowie:profile}
+J. U. Bowie, K. Zhang, M. Wilmanns, D. Eisenberg
+\emph{Three-Dimensional Profiles for Measuring Compatibility of Amino Acid Sequence with Three-Dimensional Structure}
+Methods in Enzymology, 266:598-616 (1996)
+\bibitem{silverman:hydro02}
+B.D. Silverman
+\emph{Hydrophobic Moments of Tertiary Protein Structures}
+Proteins 53:880-888 (2003)
+\bibitem{silverman:hydro01}
+R. Zhou, B.D. Silverman, A.K. Royyuru and P. Athma
+\emph{Spatial Profiling of Protein Hydrophobicity: Native Vs. Decoy Structures}
+Proteins 52:561-572 (2003)
+\bibitem{Fang:paper01}
+Y. Fang
+\emph{Surface Tension, Volume, Area, Hydrophobic Core, and Protein Folding}
+http://cbis.anu.edu.au/coral/docs/tensionsub.pdf
+% Sequence correlation and conservation
+\bibitem{Olmea:seq01}
+O. Olmea, B. Rost, A. Valencia
+\emph{Effective Use of Sequence Correlation and Conservation in Fold Recognition}
+J. Mol. Biol. 295, 1221-1239 (1999)
+
+% combination of descriptors derived from residue-residue contact and sequence-dependent local geometry
+\bibitem{Zhang:CLGP}
+J. Zhang, R. Chen, J. Liang
+\emph{Potential Function of Simplified Protein Models For Discriminating Native Proteins From Decoys: Combining contact interaction and local sequence-dependent Geometry}
+EMBC (2004)
+%self rapdf
+%density score
+\bibitem{Wang:paper01}
+K. Wang, B. Fain, M. Levitt, R. Samudrala
+\emph{Improved protein structure selection using decoy-dependent discriminatory functions}
+BMC structural Biology, 4:8 (2004)
+\bibitem{jernigan:Miyazawa}
+S. Miyazawa, R. L. Jernigan
+\emph{Residue-Residue Potentials with with a Favorable Contact Pair Term and an Unfavorable High Packing Density Term, for Simulation and Threading}
+J. Mol. Biol 256, 623-644 (1996)
+
+\bibitem{Fujitsuka:Wolynes}
+Y. Fujitsuka, S. Takada, Z. A. Luthey-Schulten, P. G. Wolynes
+\emph{Optimizing Physical Energy Functions for Protein Folding}
+Proteins, 54:88-103 (2004)
+\bibitem{Wolynes:paper1}
+M.P. Eastwood, C. Hardin, Z. Luthey-Schulten, P. G. Wolynes
+\bibitem{Lin:ANN}
+K. Lin, A. C. W. May, W. R. Taylor
+\emph{Threading Using Neural nEtwork (TUNE): the measure of protein sequence-structure compatibilty}
+Bioinformatic, 18:1350-1357 (2002)
+\bibitem{wallner:ANN}
+B. Wallner, A. Elofsson
+\emph{Can correct protein models be identified ?}
+Protein Science, 12:1073-1086 (2003)
+\bibitem{berglund:paper01}
+A. Berglund, R. D. Head, E. A. Welsh and G. R. Marshall
+\emph{ProVal, A Protein-Scoring Function for the Selection of Native and Near-Native Folds.}
+Porteins 54:289-302 (2004)
+\bibitem{simons:paper01}
+K. T. Simons, I. Ruczinski, C. Kooperberg, B. A. Fox, C. Bystroff, D. Baker
+\emph{Improved Recognition of Native-Like Protein Structures Using a Combination of Sequence-Dependent and Sequence-Independent Features of Proteins}
+Proteins 34:82-95 (1999)
+\bibitem{Liang:paper01}
+S. Liang, N. V. Grishin
+\emph{Effective Scoring Function for Protein Sequence Design}
+Proteins 54:271-281 (2004)
+\bibitem{Levitt:paper03}
+B. H. Park, E. S. Huang, M. Levitt
+\emph{Factors Affecting the Ability of Energy Functions to Discriminate Correct from Incorrect Folds}
+J. Mol. Biol. (1997) 266, 831-846
+\bibitem{Huang:paper01}
+E. S. Huang, R. Samudrala, J. W. Ponder
+remph{Ab Initio Fold Prediction of Small Helical Proteins using Distance Geometry and Knowledge-based SFs}
+J. Mol. Biol. 290:267-281 (1999)
+%------------------------------------------------------------------------------------------
+% Knowledge-based SFs
+%------------------------------------------------------------------------------------------
+% distance-independent contact potential
+\bibitem{jernigan:pmf01}
+S. Miyazawa, R. L. Jernigan
+\emph{Residue-Residue Potentials with a Favorable Contact Pair Term and an Unfavorable High Packing Density Term, For Simulation and Threading}
+J. Mol. Biol. (1996) 256, 623-624
+\bibitem{jernigan:pmf02}
+S. Miyazawa, R. L. Jernigan
+\emph{Estimation of Effective Interresidue Contact Energies from Protein Crystal Structures: Quasi-Chemical Approximation}
+Macromolecules 1985, 18, 534-552
+\bibitem{crippen:pmf01}
+V. N. Maiorov, G. M. Crippen
+\emph{Contact Potential that Recognizes the Correct Folding of Globular Proteins}
+J. Mol. Biol. (1992) 227, 876-888
+% distance-dependent potential
+\bibitem{sippl:pmf01}
+M. J. Sippl
+\emph{Calculation of Conformational Ensembles from Potentials of Mean Force}
+J. Mol. Biol. (1990) 213, 859-883
+%--> all atoms distance-dependent conditional probability formalism
+\bibitem{moult:pmf01}
+R. Samudrala, J. Moult
+\emph{An All-atom Distance-dependent Conditional Probability Discriminatory Function for Protein Structure Prediction}
+J. Mol. Biol. (1998) 275, 895-916
+% all atoms distance-dependent : Boltzmann
+\bibitem{feytmans:paper01}
+F. Melo, E. Feytmans
+\emph{Novel Knowledge-based Mean Force Potential at Atomic Level}
+J. Mol. Biol. (1997) 267, 207-222
+% potential of mean force accuracy
+\bibitem{furuichi:paper01}
+E. Furuichi, P. Koehl
+\emph{Influence of Protein Structure Databases on the Predictive Power of Statistical Pair Potentials}
+Proteins 31:139-149 (1998)
+\bibitem{dill:paper01}
+P. D. Thomas, K. A. Dill
+\emph{An iterative method for extracting energy-like quantities from protein structures}
+Proc. Natl. Acad. Sci. 93:11628-11633 (1996)
+\bibitem{Levitt:Hinds01}
+D. A. Hinds, M. Levitt
+\emph{A Lattice Model for Protein Structure Prediction at Low Resolution}
+Proc. Natl. Acad. Sci. USA. 89, 2536-2540 (1992)
+\bibitem{Levitt:Hinds02}
+D. A. Hinds, M. Levitt
+\emph{Exploring Conformational Space with a Simple Lattice Model for Protein Structure}
+J. Mol. Biol. 243,  668-682 (1994)
+\bibitem{Xia:Levitt}
+Y. Xia, M. Levitt
+\emph{Extracting knowledge-based energy functions from protein structures by error rate minimization: Comparison of methods using lattice model}
+J. Chem. Phys. 113, 20, (2000)
+%use of contact maps as protein representation
+%Is it possible to find a set of contact parameters for which energy of the native contact map of a single protein is lower than that of all possible physically decoy maps ?
+% use of perceptron learning
+\bibitem{Domany:paper01}
+M. Vendruscolo, E. Domany
+\emph{Pairwise contact potentials are unsuitable for protein folding}
+J. Chem. Phys., 109, 24 (1998)
+\bibitem{Hu:Liang}
+C. Hu, X. Li, J. Liang
+\emph{On design of Optimal Nonlinear Kernel Potential Function for Protein Folding and Protein Design}
+http://arxiv.org/abs/cond-mat/0302002
+%------------------------------------------------------------------------------------------
+% CASP 5
+%------------------------------------------------------------------------------------------
+\bibitem{venclovas:casp5}
+C. Venclovas, A. Zemla, K. Fidelis, J. Moult
+\emph{Assessment of Progress Over the CASP Experiments}
+Proteins 53:585-595 (2003)
+%------------------------------------------------------------------------------------------
+% structural genomics (proteomics)
+%------------------------------------------------------------------------------------------
+\bibitem{sanchez:paper01}
+Sanchez R, Sali A. ModBase
+\emph{a database of comparative protein structure models}
+Bioinformatics 15: 1060-1061 (1999)
+\bibitem{peitsch:paper01}
+Peitsch MC, Schwede T, Guex N.
+\emph{Automated protein modelling - the proteome in 3D}
+Pharmacogenomics 1: 257-266 (2000)
+% refinment
+\bibitem{huang:paper01}
+Huang ES, Subbiah S, Tsai J, Levitt M.
+\emph{Using a hydrophobic contact potential to evaluate native and near-native folds generated by molecular dynamics simulations}
+J. Mol. Biol. 257: 716-725 (1996)
+%------------------------------------------------------------------------------------------
+% protein design
+%------------------------------------------------------------------------------------------
+\bibitem{score:rev}
+Mendes J., Guerois R., Serrano L.
+\emph{Energy estimation in protein design}
+Curr. Opin. Struct. Biol., 12:441-446, (2002)
+\bibitem{Russ:Ranganathan}
+W. P. Russ, R. Ranganathan
+\emph{Knowledge-based potential functions in protein design}
+Cur. Opin. STruct. Biol., 12:447-452, (2002)
+%------------------------------------------------------------------------------------------
+% protein folding
+%------------------------------------------------------------------------------------------
+\bibitem{Chan:pub01}
+H. Chan, S. Shimizu, H. kaya
+\emph{Cooperativity Principles in Protein Folding }
+Methods in Enzymology, vol. 380
+
+\bibitem{Chan:pub02}
+H. S. Chan
+\emph{Physics of Protein Folding}
+La Physique Au Canada vol. 60 No. 2 195-2001 mars/avril 2004
+\bibitem{Sauer:paper01}
+A. R. Davidson, K. J. Lumb, R. T. Sauer
+\emph{Cooperatively Folded Proteins in Random Sequence Libraries}
+Nature Struct. Biol. 2:856-864 (1995)
+\bibitem{url:decoyR}
+Decoys'R' Us database
+\emph{http://dd.compbio.washington.edu}
+
+\bibitem{url:baker}
+Robetta decoy set
+\emph{http://www.bakerlab.org}
+\bibitem{url:gromos}
+GROMOS software package
+\emph{http://www.igc.ethz.ch/gromos/index.html}
+\bibitem{url:ramp}
+RAMP packet suit
+\emph{http://www.ram.org/computing/ramp/}
+\bibitem{scop}
+Murzin A. G., Brenner S. E., Hubbard T., Chothia C.
+\emph{SCOP: a structural classification of proteins database for the investigation of sequences and structures. }
+J. Mol. Biol. 247, 536-540 (1995)
+
+\end{thebibliography}
+\end{document}

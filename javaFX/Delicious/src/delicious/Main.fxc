@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Model modelID="fxc" modelVersion="40" rootInstance="DesignModel1" version="1">
+    <Instance classID="DesignModel" instanceID="DesignModel1">
+        <List name="stateVariables">
+            <Item value="inst:StateVariableModel1"/>
+        </List>
+        <List name="resources">
+            <Item value="inst:ImageModel1"/>
+            <Item value="inst:FontModel1"/>
+        </List>
+        <List name="dataSources">
+            <Item value="inst:HTTPDataSourceModel1"/>
+        </List>
+        <List name="effects"/>
+        <Reference name="scene" value="inst:SceneModel1"/>
+        <Reference name="designWidth" value="flt:240.0"/>
+        <Reference name="designHeight" value="flt:320.0"/>
+        <Reference name="designProfile" value="profile:MOBILE"/>
+        <Reference name="synchronizeDeviceAndSceneSizes" value="bool:true"/>
+    </Instance>
+    <Instance classID="StateVariableModel" instanceID="StateVariableModel1">
+        <Reference name="instanceName" value="str:currentState"/>
+        <List name="states">
+            <Item value="inst:StateModel1"/>
+            <Item value="inst:StateModel2"/>
+        </List>
+        <Reference name="startState" value="inst:StateModel1"/>
+        <Reference name="stateChangeType" value="statechange:PAUSE_AND_PLAY_FROM_START"/>
+        <Reference name="defaultInterpolator" value="interpolator:DISCRETE"/>
+        <Reference name="defaultDuration" value="int:0"/>
+    </Instance>
+    <Instance classID="StateModel" instanceID="StateModel1">
+        <Reference name="stateName" value="str:Search"/>
+        <Reference name="defaultInterpolator" value="null"/>
+        <Reference name="defaultDuration" value="null"/>
+    </Instance>
+    <Instance classID="StateModel" instanceID="StateModel2">
+        <Reference name="stateName" value="str:List"/>
+        <Reference name="defaultInterpolator" value="null"/>
+        <Reference name="defaultDuration" value="null"/>
+    </Instance>
+    <Instance classID="ImageModel" instanceID="ImageModel1">
+        <Reference name="instanceName" value="str:image"/>
+        <Reference name="preCreationCode" value="null"/>
+        <Reference name="postCreationCode" value="null"/>
+        <Reference name="url" value="prop:52,anim:0,DISCRETE,str:{__DIR__}resources/favicon16.png,"/>
+    </Instance>
+    <Instance classID="FontModel" instanceID="FontModel1">
+        <Reference name="instanceName" value="str:font"/>
+        <Reference name="preCreationCode" value="null"/>
+        <Reference name="postCreationCode" value="null"/>
+        <Reference name="size" value="prop:24,anim:0,DISCRETE,flt:16.0,"/>
+    </Instance>
+    <Instance classID="HTTPDataSourceModel" instanceID="HTTPDataSourceModel1">
+        <List name="dataSources"/>
+        <Reference name="instanceName" value="str:httpDataSource"/>
+        <Reference name="autoRefresh" value="prop:4,null,24,inst:StateVariableModel1,16,inst:StateModel2,26,anim:0,DISCRETE,bool:false,"/>
+        <Reference name="recordDisplayName" value="prop:4,null,24,inst:StateVariableModel1,16,inst:StateModel2,51,anim:0,DISCRETE,str:httpDataSourceRecordDisplayName,"/>
+        <Reference name="preCreationCode" value="null"/>
+        <Reference name="postCreationCode" value="null"/>
+        <Reference name="url" value="prop:11,anim:,,str:,4,null,"/>
+        <Reference name="parser" value="prop:20,anim:,,dsparser:JSON,4,null,"/>
+    </Instance>
+    <Instance classID="SceneModel" instanceID="SceneModel1">
+        <Reference name="instanceName" value="str:scene"/>
+        <List name="nodes">
+            <Item value="inst:ImageViewModel1"/>
+            <Item value="inst:LabelModel1"/>
+            <Item value="inst:VBoxModel1"/>
+            <Item value="inst:VBoxModel2"/>
+        </List>
+        <Reference name="width" value="prop:25,anim:0,DISCRETE,flt:240.0,"/>
+        <Reference name="height" value="prop:25,anim:0,DISCRETE,flt:320.0,"/>
+        <Reference name="generateSceneInstance" value="bool:true"/>
+        <Reference name="generateScenePanel" value="bool:true"/>
+        <Reference name="preCreationCode" value="null"/>
+        <Reference name="postCreationCode" value="null"/>
+        <Reference name="preInitCode" value="null"/>
+        <Reference name="postInitCode" value="null"/>
+    </Instance>
+    <Instance classID="ImageViewModel" instanceID="ImageViewModel1">
+        <Reference name="instanceName" value="str:imageView"/>
+        <Reference name="layoutX" value="prop:23,anim:0,DISCRETE,flt:6.0,4,null,"/>
+        <Reference name="layoutY" value="prop:23,anim:0,DISCRETE,flt:6.0,4,null,"/>
+        <Reference name="preCreationCode" value="null"/>
+        <Reference name="postCreationCode" value="null"/>
+        <Reference name="image" value="prop:32,anim:0,DISCRETE,inst:ImageModel1,4,null,"/>
+    </Instance>
+    <Instance classID="LabelModel" instanceID="LabelModel1">
+        <Reference name="instanceName" value="str:label"/>
+        <Reference name="layoutX" value="prop:24,anim:0,DISCRETE,flt:28.0,4,null,"/>
+        <Reference name="layoutY" value="prop:23,anim:0,DISCRETE,flt:6.0,4,null,"/>
+        <Reference name="preCreationCode" value="null"/>
+        <Reference name="postCreationCode" value="null"/>
+        <Reference name="graphicNode" value="null"/>
+        <Reference name="text" value="prop:37,anim:0,DISCRETE,str:Delicious Browser,4,null,"/>
+        <Reference name="font" value="prop:31,anim:0,DISCRETE,inst:FontModel1,4,null,"/>
+    </Instance>
+    <Instance classID="VBoxModel" instanceID="VBoxModel1">
+        <Reference name="instanceName" value="str:vbox"/>
+        <Reference name="translateX" value="prop:4,null,24,inst:StateVariableModel1,16,inst:StateModel1,25,anim:800,EASEBOTH,flt:0.0,16,inst:StateModel2,27,anim:800,EASEBOTH,flt:-96.0,"/>
+        <Reference name="translateY" value="prop:4,null,24,inst:StateVariableModel1,16,inst:StateModel1,25,anim:800,EASEBOTH,flt:0.0,16,inst:StateModel2,27,anim:800,EASEBOTH,flt:200.0,"/>
+        <Reference name="scaleX" value="prop:4,null,24,inst:StateVariableModel1,16,inst:StateModel1,25,anim:800,EASEBOTH,flt:1.0,16,inst:StateModel2,25,anim:800,EASEBOTH,flt:0.1,"/>
+        <Reference name="scaleY" value="prop:4,null,24,inst:StateVariableModel1,16,inst:StateModel1,25,anim:800,EASEBOTH,flt:1.0,16,inst:StateModel2,25,anim:800,EASEBOTH,flt:0.1,"/>
+        <Reference name="layoutX" value="prop:23,anim:0,DISCRETE,flt:6.0,4,null,"/>
+        <Reference name="layoutY" value="prop:24,anim:0,DISCRETE,flt:40.0,4,null,"/>
+        <Reference name="layoutInfoWidth" value="prop:25,anim:0,DISCRETE,flt:228.0,4,null,"/>
+        <Reference name="preCreationCode" value="null"/>
+        <Reference name="postCreationCode" value="null"/>
+        <List name="content">
+            <Item value="inst:LabelModel2"/>
+            <Item value="inst:TextBoxModel1"/>
+            <Item value="inst:LabelModel3"/>
+            <Item value="inst:TextBoxModel2"/>
+            <Item value="inst:ButtonModel1"/>
+        </List>
+        <Reference name="spacing" value="prop:23,anim:0,DISCRETE,flt:6.0,4,null,"/>
+    </Instance>
+    <Instance classID="LabelModel" instanceID="LabelModel2">
+        <Reference name="instanceName" value="str:userTitle"/>
+        <Reference name="preCreationCode" value="null"/>
+        <Reference name="postCreationCode" value="null"/>
+        <Reference name="graphicNode" value="null"/>
+        <Reference name="text" value="prop:24,anim:0,DISCRETE,str:User,4,null,"/>
+    </Instance>
+    <Instance classID="TextBoxModel" instanceID="TextBoxModel1">
+        <Reference name="instanceName" value="str:user"/>
+        <Reference name="layoutInfoWidth" value="prop:25,anim:0,DISCRETE,flt:228.0,4,null,"/>
+        <Reference name="preCreationCode" value="null"/>
+        <Reference name="postCreationCode" value="null"/>
+        <Reference name="action" value="prop:23,anim:,,str:buttonAction,4,null,"/>
+    </Instance>
+    <Instance classID="LabelModel" instanceID="LabelModel3">
+        <Reference name="instanceName" value="str:tagTitle"/>
+        <Reference name="preCreationCode" value="null"/>
+        <Reference name="postCreationCode" value="null"/>
+        <Reference name="graphicNode" value="null"/>
+        <Reference name="text" value="prop:47,anim:0,DISCRETE,str:Tags (comma separated list),4,null,"/>
+    </Instance>
+    <Instance classID="TextBoxModel" instanceID="TextBoxModel2">
+        <Reference name="instanceName" value="str:tag"/>
+        <Reference name="layoutInfoWidth" value="prop:25,anim:0,DISCRETE,flt:228.0,4,null,"/>
+        <Reference name="preCreationCode" value="null"/>
+        <Reference name="postCreationCode" value="null"/>
+        <Reference name="action" value="prop:23,anim:,,str:buttonAction,4,null,"/>
+    </Instance>
+    <Instance classID="ButtonModel" instanceID="ButtonModel1">
+        <Reference name="instanceName" value="str:button"/>
+        <Reference name="visible" value="prop:25,anim:0,DISCRETE,bool:true,4,null,"/>
+        <Reference name="layoutInfoHPos" value="prop:26,anim:0,DISCRETE,hpos:RIGHT,4,null,"/>
+        <Reference name="preCreationCode" value="null"/>
+        <Reference name="postCreationCode" value="null"/>
+        <Reference name="graphicNode" value="null"/>
+        <Reference name="text" value="prop:24,anim:0,DISCRETE,str:Show,4,null,"/>
+        <Reference name="action" value="prop:23,anim:,,str:buttonAction,4,null,"/>
+    </Instance>
+    <Instance classID="VBoxModel" instanceID="VBoxModel2">
+        <Reference name="instanceName" value="str:vbox2"/>
+        <Reference name="visible" value="prop:25,anim:0,DISCRETE,bool:true,4,null,"/>
+        <Reference name="translateX" value="prop:25,anim:0,DISCRETE,flt:100.0,24,inst:StateVariableModel1,16,inst:StateModel1,27,anim:800,EASEBOTH,flt:100.0,16,inst:StateModel2,25,anim:800,EASEBOTH,flt:0.0,"/>
+        <Reference name="translateY" value="prop:25,anim:0,DISCRETE,flt:140.0,24,inst:StateVariableModel1,16,inst:StateModel1,27,anim:800,EASEBOTH,flt:140.0,16,inst:StateModel2,25,anim:800,EASEBOTH,flt:0.0,"/>
+        <Reference name="scaleX" value="prop:23,anim:0,DISCRETE,flt:0.1,24,inst:StateVariableModel1,16,inst:StateModel1,25,anim:800,EASEBOTH,flt:0.1,16,inst:StateModel2,25,anim:800,EASEBOTH,flt:1.0,"/>
+        <Reference name="scaleY" value="prop:23,anim:0,DISCRETE,flt:0.1,24,inst:StateVariableModel1,16,inst:StateModel1,25,anim:800,EASEBOTH,flt:0.1,16,inst:StateModel2,25,anim:800,EASEBOTH,flt:1.0,"/>
+        <Reference name="layoutX" value="prop:23,anim:0,DISCRETE,flt:6.0,4,null,"/>
+        <Reference name="layoutY" value="prop:24,anim:0,DISCRETE,flt:40.0,4,null,"/>
+        <Reference name="preCreationCode" value="null"/>
+        <Reference name="postCreationCode" value="null"/>
+        <List name="content">
+            <Item value="inst:ListViewModel1"/>
+            <Item value="inst:HyperlinkModel1"/>
+            <Item value="inst:HBoxModel1"/>
+        </List>
+        <Reference name="spacing" value="prop:23,anim:0,DISCRETE,flt:6.0,4,null,"/>
+    </Instance>
+    <Instance classID="ListViewModel" instanceID="ListViewModel1">
+        <Reference name="instanceName" value="str:listView"/>
+        <Reference name="visible" value="prop:25,anim:0,DISCRETE,bool:true,4,null,"/>
+        <Reference name="layoutX" value="prop:23,anim:0,DISCRETE,flt:0.0,4,null,"/>
+        <Reference name="layoutY" value="prop:23,anim:0,DISCRETE,flt:0.0,4,null,"/>
+        <Reference name="layoutInfoWidth" value="prop:25,anim:0,DISCRETE,flt:228.0,4,null,"/>
+        <Reference name="layoutInfoHeight" value="prop:25,anim:0,DISCRETE,flt:180.0,4,null,"/>
+        <Reference name="preCreationCode" value="null"/>
+        <Reference name="postCreationCode" value="null"/>
+        <Reference name="items" value="prop:bind:bind httpDataSource.getRecordSet().all()"/>
+    </Instance>
+    <Instance classID="HyperlinkModel" instanceID="HyperlinkModel1">
+        <Reference name="instanceName" value="str:hyperlink"/>
+        <Reference name="visible" value="prop:25,anim:0,DISCRETE,bool:true,4,null,"/>
+        <Reference name="preCreationCode" value="null"/>
+        <Reference name="postCreationCode" value="null"/>
+        <Reference name="graphicNode" value="null"/>
+        <Reference name="text" value="prop:bind:bind if (listView.selectedItem !=null) (listView.selectedItem as org.netbeans.javafx.datasrc.Record).getString(&quot;u&quot;) else &quot;&lt;Click on items to see the URL&gt;&quot;"/>
+    </Instance>
+    <Instance classID="HBoxModel" instanceID="HBoxModel1">
+        <Reference name="instanceName" value="str:hbox"/>
+        <Reference name="visible" value="prop:25,anim:0,DISCRETE,bool:true,4,null,"/>
+        <Reference name="preCreationCode" value="null"/>
+        <Reference name="postCreationCode" value="null"/>
+        <List name="content">
+            <Item value="inst:ButtonModel2"/>
+            <Item value="inst:ProgressIndicatorModel1"/>
+        </List>
+        <Reference name="spacing" value="prop:23,anim:0,DISCRETE,flt:6.0,4,null,"/>
+    </Instance>
+    <Instance classID="ButtonModel" instanceID="ButtonModel2">
+        <Reference name="instanceName" value="str:button2"/>
+        <Reference name="visible" value="prop:25,anim:0,DISCRETE,bool:true,4,null,"/>
+        <Reference name="preCreationCode" value="null"/>
+        <Reference name="postCreationCode" value="null"/>
+        <Reference name="graphicNode" value="null"/>
+        <Reference name="text" value="prop:26,anim:0,DISCRETE,str:Button,24,inst:StateVariableModel1,16,inst:StateModel2,24,anim:0,DISCRETE,str:Back,"/>
+        <Reference name="action" value="prop:4,null,24,inst:StateVariableModel1,16,inst:StateModel2,33,anim:0,DISCRETE,str:button2Action,"/>
+    </Instance>
+    <Instance classID="ProgressIndicatorModel" instanceID="ProgressIndicatorModel1">
+        <Reference name="instanceName" value="str:progressIndicator"/>
+        <Reference name="visible" value="prop:bind:bind httpDataSource.fetchingData"/>
+        <Reference name="layoutInfoWidth" value="prop:15,anim:,,flt:30.0,4,null,"/>
+        <Reference name="layoutInfoHeight" value="prop:15,anim:,,flt:30.0,4,null,"/>
+        <Reference name="preCreationCode" value="null"/>
+        <Reference name="postCreationCode" value="null"/>
+    </Instance>
+</Model>

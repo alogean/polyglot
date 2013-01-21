@@ -1,0 +1,5 @@
+sudo port installed : liste de tous les ports installées
+port contents portName: revoie le chemin physique ou le port est installé
+port search apa : recherche de ports en utilisant un nom partiel
+port info protName : retourne des informations sur le port en question
+ 

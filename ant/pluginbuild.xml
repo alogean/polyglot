@@ -1,0 +1,130 @@
+<project name="IFMSGeneratorCentraSitePlugin" default="zip" basedir="..">
+
+	<property file="IFMSGenerator/src/com/csg/cs/log/ifms/generator/history.properties" />
+
+	<property name="debug" value="on" />
+
+	<property name="build.dir" value="IFMSGeneratorCentraSitePluginBuild/build" />
+	<property name="deploy.dir" value="IFMSGeneratorCentraSitePluginBuild/deploy" />
+
+	<property name="plugin.name" value="IFMSGeneratorPlugin" />
+
+
+	<path id="classpath">
+		<fileset dir="IFMSGeneratorCentraSitePluginBuild/lib" />
+		<fileset dir="${build.dir}/lib" />
+		<fileset dir="${build.dir}/jar" />
+	</path>
+
+
+	<target name="clean">
+		<delete dir="${build.dir}" />
+		<delete dir="${deploy.dir}" />
+	</target>
+
+
+	<target name="prepare" depends="clean">
+
+		<mkdir dir="${build.dir}" />
+		<mkdir dir="${build.dir}/jar" />
+		<mkdir dir="${build.dir}/lib" />
+
+		<mkdir dir="${deploy.dir}" />
+	</target>
+
+
+	<target name="build" depends="prepare" description="">
+
+		<antcall target="buildComponent">
+			<param name="compName" value="IFMSModel" />
+			<param name="srcDir" value="IFMSModel/src" />
+			<param name="srcDir2" value="IFMSModel/srcemf" />
+		</antcall>
+		<antcall target="buildComponent">
+			<param name="compName" value="IFMSAccessLayer" />
+			<param name="srcDir" value="IFMSAccessLayer/src" />
+		</antcall>
+		<antcall target="buildComponent">
+			<param name="compName" value="IFMSGenerator" />
+			<param name="srcDir" value="IFMSGenerator/src" />
+			<param name="srcDir2" value="IFMSGenerator/srcjet" />
+		</antcall>
+		<antcall target="buildComponent">
+			<param name="compName" value="IFMSGeneratorCentraSitePlugin" />
+			<param name="srcDir" value="IFMSGeneratorCentraSitePlugin/src" />
+		</antcall>
+	</target>
+
+	<!-- 
+		Parameters:
+		- compName: component name, should be the same as the component project directory name
+		- srcDir: source directory 1 (mandatory)
+		- srcDir2: source directory 2 (optional)
+	-->
+	<target name="buildComponent">
+
+		<delete dir="${build.dir}/classes" />
+		<mkdir dir="${build.dir}/classes" />
+
+		<copy todir="${build.dir}/lib" failonerror="false">
+			<fileset dir="${compName}/lib" includes="**/*.jar" />
+		</copy>
+
+		<condition property="source" value="${srcDir}:${srcDir2}" else="${srcDir}">
+			<isset property="srcDir2" />
+		</condition>
+
+		<javac srcdir="${source}" destdir="${build.dir}/classes" debug="${debug}" classpathref="classpath" />
+
+		<copy todir="${build.dir}/classes">
+			<fileset dir="${srcDir}" includes="**/*.properties **/*.*pli **/*.mvs11" />
+		</copy>
+
+		<jar jarfile="${build.dir}/jar/${compName}_${currentVersion}.jar">
+			<fileset dir="${build.dir}/classes" />
+		</jar>
+
+		<delete dir="${build.dir}/classes" />
+
+	</target>
+
+	<target name="plugin" depends="build" description="">
+
+		<mkdir dir="${deploy.dir}/${plugin.name}" />
+		<mkdir dir="${deploy.dir}/${plugin.name}/accesspath" />
+		<mkdir dir="${deploy.dir}/${plugin.name}/classes" />
+		<mkdir dir="${deploy.dir}/${plugin.name}/images" />
+		<mkdir dir="${deploy.dir}/${plugin.name}/lib" />
+		<mkdir dir="${deploy.dir}/${plugin.name}/xml" />
+
+		<copy file="IFMSGeneratorCentraSitePlugin/etc/generator.gif" todir="${deploy.dir}/${plugin.name}/images" />
+
+		<copy todir="${deploy.dir}/${plugin.name}/lib">
+			<fileset dir="${build.dir}/lib" />
+			<fileset dir="${build.dir}/jar" />
+		</copy>
+
+		<copy file="IFMSGeneratorCentraSitePlugin/etc/plugin.xml" todir="${deploy.dir}/${plugin.name}" />
+	</target>
+
+	<target name="zip" depends="plugin">
+		<zip destfile="${deploy.dir}/${plugin.name}_${currentVersion}.zip">
+			<fileset dir="${deploy.dir}/${plugin.name}" />
+		</zip>
+	</target>
+
+	<target name="run" description="">
+		<java classpathref="classpath" classname="com.csg.cs.log.ifms.generator.GeneratorMain" fork="true" dir="IFMSGeneratorCentraSitePluginBuild">
+			<jvmarg value="-Dcom.csg.cs.log.ifms.generator.SampleAccessLayer=true" />
+			<arg line="101 INTERFACE" />
+		</java>
+	</target>
+
+	<target name="run-test" description="">
+		<java classpathref="classpath" classname="junit.textui.TestRunner" fork="true" dir="IFMSGeneratorCentraSitePluginBuild">
+			<jvmarg value="-Dcom.csg.cs.log.ifms.generator.SampleAccessLayer=true" />
+			<arg value="com.csg.cs.log.ifms.generator.GeneratorMasterUnitTest"/>
+		</java>
+	</target>
+
+</project>

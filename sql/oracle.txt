@@ -1,0 +1,46 @@
+info on http://download.oracle.com/docs/cd/B25329_01/doc/install.102/b25144/toc.htm#CIHHJEHF
+
+[root@turing:~] # /etc/init.d/oracle-xe configure
+
+Oracle Database 10g Express Edition Configuration
+-------------------------------------------------
+This will configure on-boot properties of Oracle Database 10g Express 
+Edition.  The following questions will determine whether the database should 
+be starting upon system boot, the ports it will use, and the passwords that 
+will be used for database accounts.  Press <Enter> to accept the defaults. 
+Ctrl-C will abort.
+
+Specify the HTTP port that will be used for Oracle Application Express [8080]:
+
+Specify a port that will be used for the database listener [1521]:
+
+Specify a password to be used for database accounts.  Note that the same
+password will be used for SYS and SYSTEM.  Oracle recommends the use of 
+different passwords for each database account.  This can be done after 
+initial configuration:
+Confirm the password:
+
+Do you want Oracle Database 10g Express Edition to be started on boot (y/n) [y]:
+
+Starting Oracle Net Listener...Done
+Configuring Database...Done
+Starting Oracle Database 10g Express Edition Instance...Done
+Installation Completed Successfully.
+To access the Database Home Page go to "http://127.0.0.1:8080/apex"
+
+If you need to change the configuration settings, then you can do so by running the following command:
+
+$ /etc/init.d/oracle-xe configure
+
+To start the database manually, run this command:
+
+$ /etc/init.d/oracle-xe start
+
+To stop the database manually, use the following command:
+
+$ /etc/init.d/oracle-xe stop
+
+
+You can find the database creation logs in $ORACLE_HOME/config/log/*.
+
+
